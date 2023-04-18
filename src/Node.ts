@@ -72,6 +72,8 @@ export interface NodeConfig {
   preventDefault?: boolean;
   globalCompositeOperation?: globalCompositeOperationType;
   filters?: Array<Filter>;
+  rateDraw?: number;
+  rateHit?: number;
 }
 
 // CONSTANTS
@@ -161,11 +163,24 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
   _dragEventId: number | null = null;
   _shouldFireChangeEvents = false;
 
+  // refresh rates
+
+  _rateDraw = 1000 / 60;
+  _timerDraw = 0;
+  _accumulationDraw = 0;
+
+  _rateHit = 1000 / 60;
+  _timerHit = 0;
+  _accumulationHit = 0;
+
   constructor(config?: Config) {
     // on initial set attrs wi don't need to fire change events
     // because nobody is listening to them yet
     this.setAttrs(config);
     this._shouldFireChangeEvents = true;
+
+    this._rateDraw = config?.rateDraw ?? this._rateDraw;
+    this._rateHit = config?.rateHit ?? this._rateHit;
 
     // all change event listeners are attached to the prototype
   }
@@ -2362,9 +2377,28 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
    * @name Konva.Node#draw
    * @returns {Konva.Node}
    */
+
   draw() {
-    this.drawScene();
-    this.drawHit();
+    const time = Date.now();
+    
+    // draw scene
+    const elapsedDraw = time - this._timerDraw;
+    this._accumulationDraw += elapsedDraw;
+    if (this._accumulationDraw > this._rateDraw) {
+      this._accumulationDraw = this._accumulationDraw % this._rateDraw;
+      this.drawScene();
+    }
+    this._timerDraw = time;
+
+    // draw hit
+    const elapsedHit = time - this._timerHit;
+    this._accumulationHit += elapsedHit;
+    if (this._accumulationHit > this._rateHit) {
+      this._accumulationHit = this._accumulationHit % this._rateHit;
+      this.drawHit();
+    }
+    this._timerHit = time;
+  
     return this;
   }
 

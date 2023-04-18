@@ -885,6 +885,7 @@ export class Stage extends Container<Layer> {
   }
   _buildDOM() {
     this.bufferCanvas = new SceneCanvas({
+      pixelRatio: 1,
       width: this.width(),
       height: this.height(),
     });
