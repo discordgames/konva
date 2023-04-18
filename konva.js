@@ -2587,7 +2587,7 @@
    */
   class Node {
       constructor(config) {
-          var _a, _b;
+          var _a;
           this._id = idCounter$1++;
           this.eventListeners = {};
           this.attrs = {};
@@ -2607,15 +2607,12 @@
           this._rateDraw = 1000 / 60;
           this._timerDraw = 0;
           this._accumulationDraw = 0;
-          this._rateHit = 1000 / 60;
-          this._timerHit = 0;
-          this._accumulationHit = 0;
+          this._refreshHit = true;
           // on initial set attrs wi don't need to fire change events
           // because nobody is listening to them yet
           this.setAttrs(config);
           this._shouldFireChangeEvents = true;
           this._rateDraw = (_a = config === null || config === void 0 ? void 0 : config.rateDraw) !== null && _a !== void 0 ? _a : this._rateDraw;
-          this._rateHit = (_b = config === null || config === void 0 ? void 0 : config.rateHit) !== null && _b !== void 0 ? _b : this._rateHit;
           // all change event listeners are attached to the prototype
       }
       hasChildren() {
@@ -4558,13 +4555,10 @@
           }
           this._timerDraw = time;
           // draw hit
-          const elapsedHit = time - this._timerHit;
-          this._accumulationHit += elapsedHit;
-          if (this._accumulationHit > this._rateHit) {
-              this._accumulationHit = this._accumulationHit % this._rateHit;
+          if (this._refreshHit === true) {
               this.drawHit();
+              this._refreshHit = false;
           }
-          this._timerHit = time;
           return this;
       }
       // drag & drop
@@ -4813,7 +4807,7 @@
           const stage = this;
           (_a = stage.getLayers()) === null || _a === void 0 ? void 0 : _a.forEach((layer) => {
               layer._timerDraw = 0;
-              layer._timerHit = 0;
+              this._refreshHit = true;
           });
       }
   }
@@ -7103,6 +7097,8 @@
           return p[3] > 0;
       }
       destroy() {
+          var _a;
+          (_a = this.getLayer()) === null || _a === void 0 ? void 0 : _a.fire('destroy', { child: this });
           Node.prototype.destroy.call(this);
           delete shapes[this.colorKey];
           delete this.colorKey;
@@ -8429,6 +8425,14 @@
           this._checkVisibility();
           this.on('imageSmoothingEnabledChange.konva', this._setSmoothEnabled);
           this._setSmoothEnabled();
+          this.on('add', () => {
+              this._timerDraw = 0;
+              this._refreshHit = true;
+          });
+          this.on('destroy', () => {
+              this._timerDraw = 0;
+              this._refreshHit = true;
+          });
       }
       // for nodejs?
       createPNGStream() {
@@ -8737,18 +8741,7 @@
           if (layer && layer.clearBeforeDraw()) {
               layer.getHitCanvas().getContext().clear();
           }
-          // const pointer = this.getRelativePointerPosition();
-          // const clip = this.clip();
-          // if (pointer) {
-          // this.clip({
-          // x: pointer.x - 16,
-          // y: pointer.y - 16,
-          // width: 32,
-          // height: 32,
-          // });
-          // }
           Container.prototype.drawHit.call(this, canvas, top);
-          // this.clip(clip);
           return this;
       }
       /**

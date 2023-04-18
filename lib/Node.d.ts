@@ -34,7 +34,6 @@ export interface NodeConfig {
     globalCompositeOperation?: globalCompositeOperationType;
     filters?: Array<Filter>;
     rateDraw?: number;
-    rateHit?: number;
 }
 type NodeEventMap = GlobalEventHandlersEventMap & {
     [index: string]: any;
@@ -76,9 +75,7 @@ export declare abstract class Node<Config extends NodeConfig = NodeConfig> {
     _rateDraw: number;
     _timerDraw: number;
     _accumulationDraw: number;
-    _rateHit: number;
-    _timerHit: number;
-    _accumulationHit: number;
+    _refreshHit: boolean;
     constructor(config?: Config);
     hasChildren(): boolean;
     _clearCache(attr?: string): void;
