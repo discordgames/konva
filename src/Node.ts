@@ -2757,6 +2757,17 @@ Node.prototype.on.call(Node.prototype, 'opacityChange.konva', function () {
 
 const addGetterSetter = Factory.addGetterSetter;
 
+// utility to ensure layer refreshes on stage transform updates
+function refresh() {
+  if (this.nodeType === 'Stage') {
+    const stage = this as Stage;
+    stage.getLayers()?.forEach((layer) => {
+      layer._timerDraw = 0;
+      layer._timerHit = 0;   
+    });
+  }
+}
+
 /**
  * get/set zIndex relative to the node's siblings who share the same parent.
  * Please remember that zIndex is not absolute (like in CSS). It is relative to parent element only.
@@ -2791,9 +2802,9 @@ addGetterSetter(Node, 'zIndex');
  *   y: 10
  * });
  */
-addGetterSetter(Node, 'absolutePosition');
+addGetterSetter(Node, 'absolutePosition', undefined, undefined, refresh);
 
-addGetterSetter(Node, 'position');
+addGetterSetter(Node, 'position', undefined, undefined, refresh);
 /**
  * get/set node position relative to parent
  * @name Konva.Node#position
@@ -2813,7 +2824,7 @@ addGetterSetter(Node, 'position');
  * });
  */
 
-addGetterSetter(Node, 'x', 0, getNumberValidator());
+addGetterSetter(Node, 'x', 0, getNumberValidator(), refresh);
 
 /**
  * get/set x position
@@ -2829,7 +2840,7 @@ addGetterSetter(Node, 'x', 0, getNumberValidator());
  * node.x(5);
  */
 
-addGetterSetter(Node, 'y', 0, getNumberValidator());
+addGetterSetter(Node, 'y', 0, getNumberValidator(), refresh);
 
 /**
  * get/set y position
@@ -2918,7 +2929,7 @@ addGetterSetter(Node, 'id', '', getStringValidator());
  * node.id('foo');
  */
 
-addGetterSetter(Node, 'rotation', 0, getNumberValidator());
+addGetterSetter(Node, 'rotation', 0, getNumberValidator(), refresh);
 
 /**
  * get/set rotation in degrees
@@ -2934,7 +2945,7 @@ addGetterSetter(Node, 'rotation', 0, getNumberValidator());
  * node.rotation(45);
  */
 
-Factory.addComponentsGetterSetter(Node, 'scale', ['x', 'y']);
+Factory.addComponentsGetterSetter(Node, 'scale', ['x', 'y'], undefined, refresh);
 
 /**
  * get/set scale
@@ -2955,7 +2966,7 @@ Factory.addComponentsGetterSetter(Node, 'scale', ['x', 'y']);
  * });
  */
 
-addGetterSetter(Node, 'scaleX', 1, getNumberValidator());
+addGetterSetter(Node, 'scaleX', 1, getNumberValidator(), refresh);
 
 /**
  * get/set scale x
@@ -2971,7 +2982,7 @@ addGetterSetter(Node, 'scaleX', 1, getNumberValidator());
  * node.scaleX(2);
  */
 
-addGetterSetter(Node, 'scaleY', 1, getNumberValidator());
+addGetterSetter(Node, 'scaleY', 1, getNumberValidator(), refresh);
 
 /**
  * get/set scale y
@@ -2987,7 +2998,7 @@ addGetterSetter(Node, 'scaleY', 1, getNumberValidator());
  * node.scaleY(2);
  */
 
-Factory.addComponentsGetterSetter(Node, 'skew', ['x', 'y']);
+Factory.addComponentsGetterSetter(Node, 'skew', ['x', 'y'], undefined, refresh);
 
 /**
  * get/set skew
@@ -3008,7 +3019,7 @@ Factory.addComponentsGetterSetter(Node, 'skew', ['x', 'y']);
  * });
  */
 
-addGetterSetter(Node, 'skewX', 0, getNumberValidator());
+addGetterSetter(Node, 'skewX', 0, getNumberValidator(), refresh);
 
 /**
  * get/set skew x
@@ -3024,7 +3035,7 @@ addGetterSetter(Node, 'skewX', 0, getNumberValidator());
  * node.skewX(3);
  */
 
-addGetterSetter(Node, 'skewY', 0, getNumberValidator());
+addGetterSetter(Node, 'skewY', 0, getNumberValidator(), refresh);
 
 /**
  * get/set skew y
@@ -3040,7 +3051,7 @@ addGetterSetter(Node, 'skewY', 0, getNumberValidator());
  * node.skewY(3);
  */
 
-Factory.addComponentsGetterSetter(Node, 'offset', ['x', 'y']);
+Factory.addComponentsGetterSetter(Node, 'offset', ['x', 'y'], undefined, refresh);
 
 /**
  * get/set offset.  Offsets the default position and rotation point
@@ -3060,7 +3071,7 @@ Factory.addComponentsGetterSetter(Node, 'offset', ['x', 'y']);
  * });
  */
 
-addGetterSetter(Node, 'offsetX', 0, getNumberValidator());
+addGetterSetter(Node, 'offsetX', 0, getNumberValidator(), refresh);
 
 /**
  * get/set offset x
@@ -3076,7 +3087,7 @@ addGetterSetter(Node, 'offsetX', 0, getNumberValidator());
  * node.offsetX(3);
  */
 
-addGetterSetter(Node, 'offsetY', 0, getNumberValidator());
+addGetterSetter(Node, 'offsetY', 0, getNumberValidator(), refresh);
 
 /**
  * get/set offset y
@@ -3111,7 +3122,7 @@ addGetterSetter(Node, 'dragDistance', null, getNumberValidator());
  * Konva.dragDistance = 3;
  */
 
-addGetterSetter(Node, 'width', 0, getNumberValidator());
+addGetterSetter(Node, 'width', 0, getNumberValidator(), refresh);
 /**
  * get/set width
  * @name Konva.Node#width
@@ -3126,7 +3137,7 @@ addGetterSetter(Node, 'width', 0, getNumberValidator());
  * node.width(100);
  */
 
-addGetterSetter(Node, 'height', 0, getNumberValidator());
+addGetterSetter(Node, 'height', 0, getNumberValidator(), refresh);
 /**
  * get/set height
  * @name Konva.Node#height
@@ -3208,7 +3219,7 @@ addGetterSetter(Node, 'filters', null, function (val) {
  * ]);
  */
 
-addGetterSetter(Node, 'visible', true, getBooleanValidator());
+addGetterSetter(Node, 'visible', true, getBooleanValidator(), refresh);
 /**
  * get/set visible attr.  Can be true, or false.  The default is true.
  *   If you need to determine if a node is visible or not
@@ -3266,7 +3277,7 @@ addGetterSetter(Node, 'transformsEnabled', 'all', getStringValidator());
  *   height: 200
  * });
  */
-addGetterSetter(Node, 'size');
+addGetterSetter(Node, 'size', undefined, undefined, refresh);
 
 /**
  * get/set drag bound function.  This is used to override the default
