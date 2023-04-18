@@ -340,6 +340,10 @@ export class Transformer extends Group {
     if (elementsCreated) {
       this.update();
     }
+
+    // refresh layer
+    this.getLayer()?.refresh();
+
     return this;
   }
 

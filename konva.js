@@ -2404,7 +2404,8 @@
    */
   Factory.addGetterSetter(Canvas, 'pixelRatio', undefined, getNumberValidator());
   class SceneCanvas extends Canvas {
-      constructor(config = { width: 0, height: 0, pixelRatio: 1, willReadFrequently: false }) {
+      constructor(config = {}) {
+          config = Object.assign({ width: 0, height: 0, pixelRatio: 1, willReadFrequently: false }, config);
           super(config);
           this.context = new SceneContext(this, {
               willReadFrequently: config.willReadFrequently,
@@ -2413,7 +2414,8 @@
       }
   }
   class HitCanvas extends Canvas {
-      constructor(config = { width: 0, height: 0, pixelRatio: 1, willReadFrequently: true }) {
+      constructor(config = {}) {
+          config = Object.assign({ width: 0, height: 0, pixelRatio: 1, willReadFrequently: true }, config);
           super(config);
           this.hitCanvas = true;
           this.context = new HitContext(this);
@@ -4806,8 +4808,7 @@
       if (this.nodeType === 'Stage') {
           const stage = this;
           (_a = stage.getLayers()) === null || _a === void 0 ? void 0 : _a.forEach((layer) => {
-              layer._drawTimer = 0;
-              layer._refreshHit = true;
+              layer.refresh();
           });
       }
   }
@@ -8425,14 +8426,9 @@
           this._checkVisibility();
           this.on('imageSmoothingEnabledChange.konva', this._setSmoothEnabled);
           this._setSmoothEnabled();
-          this.on('add', () => {
-              this._drawTimer = 0;
-              this._refreshHit = true;
-          });
-          this.on('destroy', () => {
-              this._drawTimer = 0;
-              this._refreshHit = true;
-          });
+          const refresh = this.refresh.bind(this);
+          this.on('add', refresh);
+          this.on('destroy', refresh);
       }
       // for nodejs?
       createPNGStream() {
@@ -8793,6 +8789,11 @@
       destroy() {
           Util.releaseCanvas(this.getNativeCanvasElement(), this.getHitCanvas()._canvas);
           return super.destroy();
+      }
+      refresh() {
+          // ensure a re-render + hit refresh
+          this._drawTimer = 0;
+          this._refreshHit = true;
       }
   }
   Layer.prototype.nodeType = 'Layer';
@@ -15654,6 +15655,7 @@
           return EVENTS_NAME + this._id;
       }
       setNodes(nodes = []) {
+          var _a;
           if (this._nodes && this._nodes.length) {
               this.detach();
           }
@@ -15697,6 +15699,8 @@
           if (elementsCreated) {
               this.update();
           }
+          // refresh layer
+          (_a = this.getLayer()) === null || _a === void 0 ? void 0 : _a.refresh();
           return this;
       }
       _proxyDrag(node) {

@@ -2755,8 +2755,7 @@ function refresh() {
   if (this.nodeType === 'Stage') {
     const stage = this as Stage;
     stage.getLayers()?.forEach((layer) => {
-      layer._drawTimer = 0;
-      layer._refreshHit = true;
+      layer.refresh();
     });
   }
 }

@@ -172,9 +172,11 @@ Factory.addGetterSetter(Canvas, 'pixelRatio', undefined, getNumberValidator());
 
 export class SceneCanvas extends Canvas {
   constructor(
-    config: ICanvasConfig = { width: 0, height: 0, pixelRatio: 1, willReadFrequently: false }
+    config: ICanvasConfig = {}
   ) {
+    config = { width: 0, height: 0, pixelRatio: 1, willReadFrequently: false, ... config };
     super(config);
+    
     this.context = new SceneContext(this, {
       willReadFrequently: config.willReadFrequently,
     });
@@ -184,7 +186,8 @@ export class SceneCanvas extends Canvas {
 
 export class HitCanvas extends Canvas {
   hitCanvas = true;
-  constructor(config: ICanvasConfig = { width: 0, height: 0, pixelRatio: 1, willReadFrequently: true }) {
+  constructor(config: ICanvasConfig = {}) {
+    config = { width: 0, height: 0, pixelRatio: 1, willReadFrequently: true, ... config };
     super(config);
 
     this.context = new HitContext(this);

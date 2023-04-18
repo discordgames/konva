@@ -55,6 +55,7 @@ export declare class Layer extends Container<Group | Shape> {
     getHitGraphEnabled(val: any): boolean;
     toggleHitCanvas(): void;
     destroy(): this;
+    refresh(): void;
     hitGraphEnabled: GetSet<boolean, this>;
     clearBeforeDraw: GetSet<boolean, this>;
     imageSmoothingEnabled: GetSet<boolean, this>;
