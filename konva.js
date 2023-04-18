@@ -8,7 +8,7 @@
    * Konva JavaScript Framework v9.0.1
    * http://konvajs.org/
    * Licensed under the MIT
-   * Date: Mon Apr 17 2023
+   * Date: Tue Apr 18 2023
    *
    * Original work Copyright (C) 2011 - 2013 by Eric Rowell (KineticJS)
    * Modified work Copyright (C) 2014 - present by Anton Lavrenov (Konva)
@@ -4806,6 +4806,17 @@
       this._clearSelfAndDescendantCache(ABSOLUTE_OPACITY);
   });
   const addGetterSetter = Factory.addGetterSetter;
+  // utility to ensure layer refreshes on stage transform updates
+  function refresh() {
+      var _a;
+      if (this.nodeType === 'Stage') {
+          const stage = this;
+          (_a = stage.getLayers()) === null || _a === void 0 ? void 0 : _a.forEach((layer) => {
+              layer._timerDraw = 0;
+              layer._timerHit = 0;
+          });
+      }
+  }
   /**
    * get/set zIndex relative to the node's siblings who share the same parent.
    * Please remember that zIndex is not absolute (like in CSS). It is relative to parent element only.
@@ -4839,8 +4850,8 @@
    *   y: 10
    * });
    */
-  addGetterSetter(Node, 'absolutePosition');
-  addGetterSetter(Node, 'position');
+  addGetterSetter(Node, 'absolutePosition', undefined, undefined, refresh);
+  addGetterSetter(Node, 'position', undefined, undefined, refresh);
   /**
    * get/set node position relative to parent
    * @name Konva.Node#position
@@ -4859,7 +4870,7 @@
    *   y: 10
    * });
    */
-  addGetterSetter(Node, 'x', 0, getNumberValidator());
+  addGetterSetter(Node, 'x', 0, getNumberValidator(), refresh);
   /**
    * get/set x position
    * @name Konva.Node#x
@@ -4873,7 +4884,7 @@
    * // set x
    * node.x(5);
    */
-  addGetterSetter(Node, 'y', 0, getNumberValidator());
+  addGetterSetter(Node, 'y', 0, getNumberValidator(), refresh);
   /**
    * get/set y position
    * @name Konva.Node#y
@@ -4948,7 +4959,7 @@
    * // set id
    * node.id('foo');
    */
-  addGetterSetter(Node, 'rotation', 0, getNumberValidator());
+  addGetterSetter(Node, 'rotation', 0, getNumberValidator(), refresh);
   /**
    * get/set rotation in degrees
    * @name Konva.Node#rotation
@@ -4962,7 +4973,7 @@
    * // set rotation in degrees
    * node.rotation(45);
    */
-  Factory.addComponentsGetterSetter(Node, 'scale', ['x', 'y']);
+  Factory.addComponentsGetterSetter(Node, 'scale', ['x', 'y'], undefined, refresh);
   /**
    * get/set scale
    * @name Konva.Node#scale
@@ -4981,7 +4992,7 @@
    *   y: 3
    * });
    */
-  addGetterSetter(Node, 'scaleX', 1, getNumberValidator());
+  addGetterSetter(Node, 'scaleX', 1, getNumberValidator(), refresh);
   /**
    * get/set scale x
    * @name Konva.Node#scaleX
@@ -4995,7 +5006,7 @@
    * // set scale x
    * node.scaleX(2);
    */
-  addGetterSetter(Node, 'scaleY', 1, getNumberValidator());
+  addGetterSetter(Node, 'scaleY', 1, getNumberValidator(), refresh);
   /**
    * get/set scale y
    * @name Konva.Node#scaleY
@@ -5009,7 +5020,7 @@
    * // set scale y
    * node.scaleY(2);
    */
-  Factory.addComponentsGetterSetter(Node, 'skew', ['x', 'y']);
+  Factory.addComponentsGetterSetter(Node, 'skew', ['x', 'y'], undefined, refresh);
   /**
    * get/set skew
    * @name Konva.Node#skew
@@ -5028,7 +5039,7 @@
    *   y: 10
    * });
    */
-  addGetterSetter(Node, 'skewX', 0, getNumberValidator());
+  addGetterSetter(Node, 'skewX', 0, getNumberValidator(), refresh);
   /**
    * get/set skew x
    * @name Konva.Node#skewX
@@ -5042,7 +5053,7 @@
    * // set skew x
    * node.skewX(3);
    */
-  addGetterSetter(Node, 'skewY', 0, getNumberValidator());
+  addGetterSetter(Node, 'skewY', 0, getNumberValidator(), refresh);
   /**
    * get/set skew y
    * @name Konva.Node#skewY
@@ -5056,7 +5067,7 @@
    * // set skew y
    * node.skewY(3);
    */
-  Factory.addComponentsGetterSetter(Node, 'offset', ['x', 'y']);
+  Factory.addComponentsGetterSetter(Node, 'offset', ['x', 'y'], undefined, refresh);
   /**
    * get/set offset.  Offsets the default position and rotation point
    * @method
@@ -5074,7 +5085,7 @@
    *   y: 10
    * });
    */
-  addGetterSetter(Node, 'offsetX', 0, getNumberValidator());
+  addGetterSetter(Node, 'offsetX', 0, getNumberValidator(), refresh);
   /**
    * get/set offset x
    * @name Konva.Node#offsetX
@@ -5088,7 +5099,7 @@
    * // set offset x
    * node.offsetX(3);
    */
-  addGetterSetter(Node, 'offsetY', 0, getNumberValidator());
+  addGetterSetter(Node, 'offsetY', 0, getNumberValidator(), refresh);
   /**
    * get/set offset y
    * @name Konva.Node#offsetY
@@ -5119,7 +5130,7 @@
    * // or set globally
    * Konva.dragDistance = 3;
    */
-  addGetterSetter(Node, 'width', 0, getNumberValidator());
+  addGetterSetter(Node, 'width', 0, getNumberValidator(), refresh);
   /**
    * get/set width
    * @name Konva.Node#width
@@ -5133,7 +5144,7 @@
    * // set width
    * node.width(100);
    */
-  addGetterSetter(Node, 'height', 0, getNumberValidator());
+  addGetterSetter(Node, 'height', 0, getNumberValidator(), refresh);
   /**
    * get/set height
    * @name Konva.Node#height
@@ -5210,7 +5221,7 @@
    *   Konva.Filters.Invert
    * ]);
    */
-  addGetterSetter(Node, 'visible', true, getBooleanValidator());
+  addGetterSetter(Node, 'visible', true, getBooleanValidator(), refresh);
   /**
    * get/set visible attr.  Can be true, or false.  The default is true.
    *   If you need to determine if a node is visible or not
@@ -5265,7 +5276,7 @@
    *   height: 200
    * });
    */
-  addGetterSetter(Node, 'size');
+  addGetterSetter(Node, 'size', undefined, undefined, refresh);
   /**
    * get/set drag bound function.  This is used to override the default
    *  drag and drop position.
