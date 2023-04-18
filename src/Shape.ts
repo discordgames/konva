@@ -443,6 +443,8 @@ export class Shape<
   }
 
   destroy() {
+    this.getLayer()?.fire('destroy', { child: this });
+
     Node.prototype.destroy.call(this);
     delete shapes[this.colorKey];
     delete this.colorKey;

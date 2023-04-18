@@ -69,6 +69,16 @@ export class Layer extends Container<Group | Shape> {
 
     this.on('imageSmoothingEnabledChange.konva', this._setSmoothEnabled);
     this._setSmoothEnabled();
+
+    this.on('add', () => {
+      this._drawTimer = 0;
+      this._refreshHit = true;
+    });
+
+    this.on('destroy', () => {
+      this._drawTimer = 0;
+      this._refreshHit = true;
+    });
   }
   // for nodejs?
   createPNGStream() {

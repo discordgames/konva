@@ -5,10 +5,10 @@
 })(this, (function () { 'use strict';
 
   /*
-   * Konva JavaScript Framework v9.0.0
+   * Konva JavaScript Framework v9.0.1
    * http://konvajs.org/
    * Licensed under the MIT
-   * Date: Fri Apr 14 2023
+   * Date: Tue Apr 18 2023
    *
    * Original work Copyright (C) 2011 - 2013 by Eric Rowell (KineticJS)
    * Modified work Copyright (C) 2014 - present by Anton Lavrenov (Konva)
@@ -35,7 +35,7 @@
               : {};
   const Konva$2 = {
       _global: glob,
-      version: '9.0.0',
+      version: '9.0.1',
       isBrowser: detectBrowser(),
       isUnminified: /param/.test(function (param) { }.toString()),
       dblClickWindow: 400,
@@ -654,6 +654,51 @@
       },
       createCanvasElement() {
           var canvas = document.createElement('canvas');
+          // OFFSCREEN TEST
+          /*
+          const EnableOffscreenCanvas = false;
+          
+          // attempt to use offscreen canvas
+          if (EnableOffscreenCanvas && canvas.transferControlToOffscreen) {
+            const offscreen = canvas.transferControlToOffscreen();
+      
+            // create web worker
+            var worker = new Worker('./Web_Worker.js');
+      
+            // pass canvas into webworker, so we can do all rendering inside it
+            worker.postMessage({ canvas: offscreen }, [offscreen]);
+      
+            // "proxy" all DOM events from canvas into Konva engine
+            var KonvaEvents = [
+              'mouseenter',
+              'mousedown',
+              'mousemove',
+              'mouseup',
+              'mouseout',
+              'wheel',
+              'contextmenu',
+              'pointerdown',
+              'pointermove',
+              'pointerup',
+              'pointercancel',
+              'lostpointercapture',
+            ];
+      
+            KonvaEvents.forEach((eventName) => {
+              canvas.addEventListener(eventName, (e: MouseEvent | PointerEvent | WheelEvent) => {
+                worker.postMessage({
+                  eventName,
+                  event: {
+                    type: e.type,
+                    clientX: e.clientX,
+                    clientY: e.clientY,
+                  },
+                });
+              });
+            });
+          }
+          */
+          // END TEST
           // on some environments canvas.style is readonly
           try {
               canvas.style = canvas.style || {};
@@ -2359,7 +2404,7 @@
    */
   Factory.addGetterSetter(Canvas, 'pixelRatio', undefined, getNumberValidator());
   class SceneCanvas extends Canvas {
-      constructor(config = { width: 0, height: 0, willReadFrequently: false }) {
+      constructor(config = { width: 0, height: 0, pixelRatio: 1, willReadFrequently: false }) {
           super(config);
           this.context = new SceneContext(this, {
               willReadFrequently: config.willReadFrequently,
@@ -2368,7 +2413,7 @@
       }
   }
   class HitCanvas extends Canvas {
-      constructor(config = { width: 0, height: 0 }) {
+      constructor(config = { width: 0, height: 0, pixelRatio: 1, willReadFrequently: true }) {
           super(config);
           this.hitCanvas = true;
           this.context = new HitContext(this);
@@ -2542,6 +2587,7 @@
    */
   class Node {
       constructor(config) {
+          var _a;
           this._id = idCounter$1++;
           this.eventListeners = {};
           this.attrs = {};
@@ -2557,10 +2603,16 @@
           this._isUnderCache = false;
           this._dragEventId = null;
           this._shouldFireChangeEvents = false;
+          // refresh rates
+          this._drawRate = 1000 / 60;
+          this._drawTimer = 0;
+          this._drawAccumulation = 0;
+          this._refreshHit = true;
           // on initial set attrs wi don't need to fire change events
           // because nobody is listening to them yet
           this.setAttrs(config);
           this._shouldFireChangeEvents = true;
+          this._drawRate = (_a = config === null || config === void 0 ? void 0 : config.drawRate) !== null && _a !== void 0 ? _a : this._drawRate;
           // all change event listeners are attached to the prototype
       }
       hasChildren() {
@@ -4449,26 +4501,23 @@
           }
       }
       _getProtoListeners(eventType) {
-          let listeners = this._cache.get(ALL_LISTENERS);
-          // if no cache for listeners, we need to pre calculate it
-          if (!listeners) {
-              listeners = {};
+          var _a, _b, _c;
+          const allListeners = (_a = this._cache.get(ALL_LISTENERS)) !== null && _a !== void 0 ? _a : {};
+          let events = allListeners === null || allListeners === void 0 ? void 0 : allListeners[eventType];
+          if (events === undefined) {
+              //recalculate cache
+              events = [];
               let obj = Object.getPrototypeOf(this);
               while (obj) {
-                  if (!obj.eventListeners) {
-                      obj = Object.getPrototypeOf(obj);
-                      continue;
-                  }
-                  for (var event in obj.eventListeners) {
-                      const newEvents = obj.eventListeners[event];
-                      const oldEvents = listeners[event] || [];
-                      listeners[event] = newEvents.concat(oldEvents);
-                  }
+                  const hierarchyEvents = (_c = (_b = obj.eventListeners) === null || _b === void 0 ? void 0 : _b[eventType]) !== null && _c !== void 0 ? _c : [];
+                  events.push(...hierarchyEvents);
                   obj = Object.getPrototypeOf(obj);
               }
-              this._cache.set(ALL_LISTENERS, listeners);
+              // update cache
+              allListeners[eventType] = events;
+              this._cache.set(ALL_LISTENERS, allListeners);
           }
-          return listeners[eventType];
+          return events;
       }
       _fire(eventType, evt) {
           evt = evt || {};
@@ -4496,8 +4545,20 @@
        * @returns {Konva.Node}
        */
       draw() {
-          this.drawScene();
-          this.drawHit();
+          const time = Date.now();
+          // draw scene
+          const elapsedDraw = time - this._drawTimer;
+          this._drawAccumulation += elapsedDraw;
+          if (this._drawAccumulation >= this._drawRate) {
+              this._drawAccumulation = this._drawAccumulation % this._drawRate;
+              this.drawScene();
+          }
+          this._drawTimer = time;
+          // draw hit
+          if (this._refreshHit === true) {
+              this.drawHit();
+              this._refreshHit = false;
+          }
           return this;
       }
       // drag & drop
@@ -4739,6 +4800,17 @@
       this._clearSelfAndDescendantCache(ABSOLUTE_OPACITY);
   });
   const addGetterSetter = Factory.addGetterSetter;
+  // utility to ensure layer refreshes on stage transform updates
+  function refresh() {
+      var _a;
+      if (this.nodeType === 'Stage') {
+          const stage = this;
+          (_a = stage.getLayers()) === null || _a === void 0 ? void 0 : _a.forEach((layer) => {
+              layer._drawTimer = 0;
+              layer._refreshHit = true;
+          });
+      }
+  }
   /**
    * get/set zIndex relative to the node's siblings who share the same parent.
    * Please remember that zIndex is not absolute (like in CSS). It is relative to parent element only.
@@ -4772,8 +4844,8 @@
    *   y: 10
    * });
    */
-  addGetterSetter(Node, 'absolutePosition');
-  addGetterSetter(Node, 'position');
+  addGetterSetter(Node, 'absolutePosition', undefined, undefined, refresh);
+  addGetterSetter(Node, 'position', undefined, undefined, refresh);
   /**
    * get/set node position relative to parent
    * @name Konva.Node#position
@@ -4792,7 +4864,7 @@
    *   y: 10
    * });
    */
-  addGetterSetter(Node, 'x', 0, getNumberValidator());
+  addGetterSetter(Node, 'x', 0, getNumberValidator(), refresh);
   /**
    * get/set x position
    * @name Konva.Node#x
@@ -4806,7 +4878,7 @@
    * // set x
    * node.x(5);
    */
-  addGetterSetter(Node, 'y', 0, getNumberValidator());
+  addGetterSetter(Node, 'y', 0, getNumberValidator(), refresh);
   /**
    * get/set y position
    * @name Konva.Node#y
@@ -4881,7 +4953,7 @@
    * // set id
    * node.id('foo');
    */
-  addGetterSetter(Node, 'rotation', 0, getNumberValidator());
+  addGetterSetter(Node, 'rotation', 0, getNumberValidator(), refresh);
   /**
    * get/set rotation in degrees
    * @name Konva.Node#rotation
@@ -4895,7 +4967,7 @@
    * // set rotation in degrees
    * node.rotation(45);
    */
-  Factory.addComponentsGetterSetter(Node, 'scale', ['x', 'y']);
+  Factory.addComponentsGetterSetter(Node, 'scale', ['x', 'y'], undefined, refresh);
   /**
    * get/set scale
    * @name Konva.Node#scale
@@ -4914,7 +4986,7 @@
    *   y: 3
    * });
    */
-  addGetterSetter(Node, 'scaleX', 1, getNumberValidator());
+  addGetterSetter(Node, 'scaleX', 1, getNumberValidator(), refresh);
   /**
    * get/set scale x
    * @name Konva.Node#scaleX
@@ -4928,7 +5000,7 @@
    * // set scale x
    * node.scaleX(2);
    */
-  addGetterSetter(Node, 'scaleY', 1, getNumberValidator());
+  addGetterSetter(Node, 'scaleY', 1, getNumberValidator(), refresh);
   /**
    * get/set scale y
    * @name Konva.Node#scaleY
@@ -4942,7 +5014,7 @@
    * // set scale y
    * node.scaleY(2);
    */
-  Factory.addComponentsGetterSetter(Node, 'skew', ['x', 'y']);
+  Factory.addComponentsGetterSetter(Node, 'skew', ['x', 'y'], undefined, refresh);
   /**
    * get/set skew
    * @name Konva.Node#skew
@@ -4961,7 +5033,7 @@
    *   y: 10
    * });
    */
-  addGetterSetter(Node, 'skewX', 0, getNumberValidator());
+  addGetterSetter(Node, 'skewX', 0, getNumberValidator(), refresh);
   /**
    * get/set skew x
    * @name Konva.Node#skewX
@@ -4975,7 +5047,7 @@
    * // set skew x
    * node.skewX(3);
    */
-  addGetterSetter(Node, 'skewY', 0, getNumberValidator());
+  addGetterSetter(Node, 'skewY', 0, getNumberValidator(), refresh);
   /**
    * get/set skew y
    * @name Konva.Node#skewY
@@ -4989,7 +5061,7 @@
    * // set skew y
    * node.skewY(3);
    */
-  Factory.addComponentsGetterSetter(Node, 'offset', ['x', 'y']);
+  Factory.addComponentsGetterSetter(Node, 'offset', ['x', 'y'], undefined, refresh);
   /**
    * get/set offset.  Offsets the default position and rotation point
    * @method
@@ -5007,7 +5079,7 @@
    *   y: 10
    * });
    */
-  addGetterSetter(Node, 'offsetX', 0, getNumberValidator());
+  addGetterSetter(Node, 'offsetX', 0, getNumberValidator(), refresh);
   /**
    * get/set offset x
    * @name Konva.Node#offsetX
@@ -5021,7 +5093,7 @@
    * // set offset x
    * node.offsetX(3);
    */
-  addGetterSetter(Node, 'offsetY', 0, getNumberValidator());
+  addGetterSetter(Node, 'offsetY', 0, getNumberValidator(), refresh);
   /**
    * get/set offset y
    * @name Konva.Node#offsetY
@@ -5052,7 +5124,7 @@
    * // or set globally
    * Konva.dragDistance = 3;
    */
-  addGetterSetter(Node, 'width', 0, getNumberValidator());
+  addGetterSetter(Node, 'width', 0, getNumberValidator(), refresh);
   /**
    * get/set width
    * @name Konva.Node#width
@@ -5066,7 +5138,7 @@
    * // set width
    * node.width(100);
    */
-  addGetterSetter(Node, 'height', 0, getNumberValidator());
+  addGetterSetter(Node, 'height', 0, getNumberValidator(), refresh);
   /**
    * get/set height
    * @name Konva.Node#height
@@ -5143,7 +5215,7 @@
    *   Konva.Filters.Invert
    * ]);
    */
-  addGetterSetter(Node, 'visible', true, getBooleanValidator());
+  addGetterSetter(Node, 'visible', true, getBooleanValidator(), refresh);
   /**
    * get/set visible attr.  Can be true, or false.  The default is true.
    *   If you need to determine if a node is visible or not
@@ -5198,7 +5270,7 @@
    *   height: 200
    * });
    */
-  addGetterSetter(Node, 'size');
+  addGetterSetter(Node, 'size', undefined, undefined, refresh);
   /**
    * get/set drag bound function.  This is used to override the default
    *  drag and drop position.
@@ -6611,6 +6683,7 @@
       }
       _buildDOM() {
           this.bufferCanvas = new SceneCanvas({
+              pixelRatio: 1,
               width: this.width(),
               height: this.height(),
           });
@@ -7024,6 +7097,8 @@
           return p[3] > 0;
       }
       destroy() {
+          var _a;
+          (_a = this.getLayer()) === null || _a === void 0 ? void 0 : _a.fire('destroy', { child: this });
           Node.prototype.destroy.call(this);
           delete shapes[this.colorKey];
           delete this.colorKey;
@@ -8350,6 +8425,14 @@
           this._checkVisibility();
           this.on('imageSmoothingEnabledChange.konva', this._setSmoothEnabled);
           this._setSmoothEnabled();
+          this.on('add', () => {
+              this._drawTimer = 0;
+              this._refreshHit = true;
+          });
+          this.on('destroy', () => {
+              this._drawTimer = 0;
+              this._refreshHit = true;
+          });
       }
       // for nodejs?
       createPNGStream() {
@@ -15516,6 +15599,7 @@
    * @param {Number} [config.anchorStrokeWidth] Anchor stroke size
    * @param {Number} [config.anchorSize] Default is 10
    * @param {Boolean} [config.keepRatio] Should we keep ratio when we are moving edges? Default is true
+   * @param {String} [config.shiftBehavior] How does transformer react on shift key press when we are moving edges? Default is 'default'
    * @param {Boolean} [config.centeredScaling] Should we resize relative to node's center? Default is false
    * @param {Array} [config.enabledAnchors] Array of names of enabled handles
    * @param {Boolean} [config.flipEnabled] Can we flip/mirror shape on transform?. True by default
@@ -15958,7 +16042,17 @@
               this._fitNodesInto(shape, e);
               return;
           }
-          var keepProportion = this.keepRatio() || e.shiftKey;
+          var shiftBehavior = this.shiftBehavior();
+          var keepProportion;
+          if (shiftBehavior === 'inverted') {
+              keepProportion = this.keepRatio() && !e.shiftKey;
+          }
+          else if (shiftBehavior === 'none') {
+              keepProportion = this.keepRatio();
+          }
+          else {
+              keepProportion = this.keepRatio() || e.shiftKey;
+          }
           var centeredScaling = this.centeredScaling() || e.altKey;
           if (this._movingAnchorName === 'top-left') {
               if (keepProportion) {
@@ -16675,6 +16769,20 @@
    * transformer.keepRatio(false);
    */
   Factory.addGetterSetter(Transformer, 'keepRatio', true);
+  /**
+   * get/set how to react on skift key while resizing anchors at corners
+   * @name Konva.Transformer#shiftBehavior
+   * @method
+   * @param {String} shiftBehavior
+   * @returns {String}
+   * @example
+   * // get
+   * var shiftBehavior = transformer.shiftBehavior();
+   *
+   * // set
+   * transformer.shiftBehavior('none');
+   */
+  Factory.addGetterSetter(Transformer, 'shiftBehavior', 'default');
   /**
    * get/set should we resize relative to node's center?
    * @name Konva.Transformer#centeredScaling
