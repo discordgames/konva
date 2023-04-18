@@ -71,12 +71,12 @@ export class Layer extends Container<Group | Shape> {
     this._setSmoothEnabled();
 
     this.on('add', () => {
-      this._timerDraw = 0;
+      this._drawTimer = 0;
       this._refreshHit = true;
     });
 
     this.on('destroy', () => {
-      this._timerDraw = 0;
+      this._drawTimer = 0;
       this._refreshHit = true;
     });
   }

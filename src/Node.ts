@@ -72,7 +72,7 @@ export interface NodeConfig {
   preventDefault?: boolean;
   globalCompositeOperation?: globalCompositeOperationType;
   filters?: Array<Filter>;
-  rateDraw?: number;
+  drawRate?: number;
 }
 
 // CONSTANTS
@@ -164,9 +164,9 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
 
   // refresh rates
 
-  _rateDraw = 1000 / 60;
-  _timerDraw = 0;
-  _accumulationDraw = 0;
+  _drawRate = 1000 / 60;
+  _drawTimer = 0;
+  _drawAccumulation = 0;
 
   _refreshHit = true;
 
@@ -176,7 +176,7 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
     this.setAttrs(config);
     this._shouldFireChangeEvents = true;
 
-    this._rateDraw = config?.rateDraw ?? this._rateDraw;
+    this._drawRate = config?.drawRate ?? this._drawRate;
     
     // all change event listeners are attached to the prototype
   }
@@ -2378,13 +2378,13 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
     const time = Date.now();
     
     // draw scene
-    const elapsedDraw = time - this._timerDraw;
-    this._accumulationDraw += elapsedDraw;
-    if (this._accumulationDraw > this._rateDraw) {
-      this._accumulationDraw = this._accumulationDraw % this._rateDraw;
+    const elapsedDraw = time - this._drawTimer;
+    this._drawAccumulation += elapsedDraw;
+    if (this._drawAccumulation > this._drawRate) {
+      this._drawAccumulation = this._drawAccumulation % this._drawRate;
       this.drawScene();
     }
-    this._timerDraw = time;
+    this._drawTimer = time;
 
     // draw hit
     if (this._refreshHit === true) {
@@ -2755,8 +2755,8 @@ function refresh() {
   if (this.nodeType === 'Stage') {
     const stage = this as Stage;
     stage.getLayers()?.forEach((layer) => {
-      layer._timerDraw = 0;
-      this._refreshHit = true;
+      layer._drawTimer = 0;
+      layer._refreshHit = true;
     });
   }
 }

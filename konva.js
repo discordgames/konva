@@ -2604,15 +2604,15 @@
           this._dragEventId = null;
           this._shouldFireChangeEvents = false;
           // refresh rates
-          this._rateDraw = 1000 / 60;
-          this._timerDraw = 0;
-          this._accumulationDraw = 0;
+          this._drawRate = 1000 / 60;
+          this._drawTimer = 0;
+          this._drawAccumulation = 0;
           this._refreshHit = true;
           // on initial set attrs wi don't need to fire change events
           // because nobody is listening to them yet
           this.setAttrs(config);
           this._shouldFireChangeEvents = true;
-          this._rateDraw = (_a = config === null || config === void 0 ? void 0 : config.rateDraw) !== null && _a !== void 0 ? _a : this._rateDraw;
+          this._drawRate = (_a = config === null || config === void 0 ? void 0 : config.drawRate) !== null && _a !== void 0 ? _a : this._drawRate;
           // all change event listeners are attached to the prototype
       }
       hasChildren() {
@@ -4547,13 +4547,13 @@
       draw() {
           const time = Date.now();
           // draw scene
-          const elapsedDraw = time - this._timerDraw;
-          this._accumulationDraw += elapsedDraw;
-          if (this._accumulationDraw > this._rateDraw) {
-              this._accumulationDraw = this._accumulationDraw % this._rateDraw;
+          const elapsedDraw = time - this._drawTimer;
+          this._drawAccumulation += elapsedDraw;
+          if (this._drawAccumulation > this._drawRate) {
+              this._drawAccumulation = this._drawAccumulation % this._drawRate;
               this.drawScene();
           }
-          this._timerDraw = time;
+          this._drawTimer = time;
           // draw hit
           if (this._refreshHit === true) {
               this.drawHit();
@@ -4806,8 +4806,8 @@
       if (this.nodeType === 'Stage') {
           const stage = this;
           (_a = stage.getLayers()) === null || _a === void 0 ? void 0 : _a.forEach((layer) => {
-              layer._timerDraw = 0;
-              this._refreshHit = true;
+              layer._drawTimer = 0;
+              layer._refreshHit = true;
           });
       }
   }
@@ -8426,11 +8426,11 @@
           this.on('imageSmoothingEnabledChange.konva', this._setSmoothEnabled);
           this._setSmoothEnabled();
           this.on('add', () => {
-              this._timerDraw = 0;
+              this._drawTimer = 0;
               this._refreshHit = true;
           });
           this.on('destroy', () => {
-              this._timerDraw = 0;
+              this._drawTimer = 0;
               this._refreshHit = true;
           });
       }
