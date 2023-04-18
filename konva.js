@@ -15655,7 +15655,6 @@
           return EVENTS_NAME + this._id;
       }
       setNodes(nodes = []) {
-          var _a;
           if (this._nodes && this._nodes.length) {
               this.detach();
           }
@@ -15699,8 +15698,6 @@
           if (elementsCreated) {
               this.update();
           }
-          // refresh layer
-          (_a = this.getLayer()) === null || _a === void 0 ? void 0 : _a.refresh();
           return this;
       }
       _proxyDrag(node) {
@@ -16373,7 +16370,6 @@
           anchor.setAttrs(attrs);
       }
       update() {
-          var _a;
           var attrs = this._getNodeRect();
           this.rotation(Util._getRotation(attrs.rotation));
           var width = attrs.width;
@@ -16461,7 +16457,11 @@
               x: 0,
               y: 0,
           });
-          (_a = this.getLayer()) === null || _a === void 0 ? void 0 : _a.batchDraw();
+          const layer = this.getLayer();
+          if (layer) {
+              layer.batchDraw();
+              layer.refresh();
+          }
       }
       /**
        * determine if transformer is in active transform

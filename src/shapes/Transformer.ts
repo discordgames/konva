@@ -340,10 +340,6 @@ export class Transformer extends Group {
     if (elementsCreated) {
       this.update();
     }
-
-    // refresh layer
-    this.getLayer()?.refresh();
-
     return this;
   }
 
@@ -1220,7 +1216,12 @@ export class Transformer extends Group {
       x: 0,
       y: 0,
     });
-    this.getLayer()?.batchDraw();
+
+    const layer = this.getLayer();
+    if (layer) {
+      layer.batchDraw();
+      layer.refresh();
+    }
   }
   /**
    * determine if transformer is in active transform
