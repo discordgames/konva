@@ -73,7 +73,6 @@ export interface NodeConfig {
   globalCompositeOperation?: globalCompositeOperationType;
   filters?: Array<Filter>;
   rateDraw?: number;
-  rateHit?: number;
 }
 
 // CONSTANTS
@@ -169,9 +168,7 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
   _timerDraw = 0;
   _accumulationDraw = 0;
 
-  _rateHit = 1000 / 60;
-  _timerHit = 0;
-  _accumulationHit = 0;
+  _refreshHit = true;
 
   constructor(config?: Config) {
     // on initial set attrs wi don't need to fire change events
@@ -180,8 +177,7 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
     this._shouldFireChangeEvents = true;
 
     this._rateDraw = config?.rateDraw ?? this._rateDraw;
-    this._rateHit = config?.rateHit ?? this._rateHit;
-
+    
     // all change event listeners are attached to the prototype
   }
 
@@ -2391,13 +2387,10 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
     this._timerDraw = time;
 
     // draw hit
-    const elapsedHit = time - this._timerHit;
-    this._accumulationHit += elapsedHit;
-    if (this._accumulationHit > this._rateHit) {
-      this._accumulationHit = this._accumulationHit % this._rateHit;
+    if (this._refreshHit === true) {
       this.drawHit();
+      this._refreshHit = false;
     }
-    this._timerHit = time;
   
     return this;
   }
@@ -2763,7 +2756,7 @@ function refresh() {
     const stage = this as Stage;
     stage.getLayers()?.forEach((layer) => {
       layer._timerDraw = 0;
-      layer._timerHit = 0;   
+      this._refreshHit = true;
     });
   }
 }
