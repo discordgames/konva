@@ -2380,7 +2380,7 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
     // draw scene
     const elapsedDraw = time - this._drawTimer;
     this._drawAccumulation += elapsedDraw;
-    if (this._drawAccumulation > this._drawRate) {
+    if (this._drawAccumulation >= this._drawRate) {
       this._drawAccumulation = this._drawAccumulation % this._drawRate;
       this.drawScene();
     }
