@@ -15733,6 +15733,11 @@
               });
               lastPos = null;
           });
+          node.on(`dragend.${this._getEventNamespace()}`, () => {
+              var _a;
+              // force refresh of layer on end of drag events
+              (_a = node.getLayer()) === null || _a === void 0 ? void 0 : _a.refresh();
+          });
       }
       getNodes() {
           return this._nodes || [];

@@ -376,6 +376,10 @@ export class Transformer extends Group {
       });
       lastPos = null;
     });
+    node.on(`dragend.${this._getEventNamespace()}`, () => {
+      // force refresh of layer on end of drag events
+      node.getLayer()?.refresh();
+  })
   }
 
   getNodes() {
