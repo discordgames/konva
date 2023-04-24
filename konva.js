@@ -8,7 +8,7 @@
    * Konva JavaScript Framework v9.0.1
    * http://konvajs.org/
    * Licensed under the MIT
-   * Date: Tue Apr 18 2023
+   * Date: Mon Apr 24 2023
    *
    * Original work Copyright (C) 2011 - 2013 by Eric Rowell (KineticJS)
    * Modified work Copyright (C) 2014 - present by Anton Lavrenov (Konva)
@@ -4554,13 +4554,13 @@
           if (this._drawAccumulation >= this._drawRate) {
               this._drawAccumulation = this._drawAccumulation % this._drawRate;
               this.drawScene();
+              // draw hit
+              if (this._refreshHit === true) {
+                  this.drawHit();
+                  this._refreshHit = false;
+              }
           }
           this._drawTimer = time;
-          // draw hit
-          if (this._refreshHit === true) {
-              this.drawHit();
-              this._refreshHit = false;
-          }
           return this;
       }
       // drag & drop

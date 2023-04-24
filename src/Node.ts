@@ -2383,14 +2383,14 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
     if (this._drawAccumulation >= this._drawRate) {
       this._drawAccumulation = this._drawAccumulation % this._drawRate;
       this.drawScene();
+
+      // draw hit
+      if (this._refreshHit === true) {
+        this.drawHit();
+        this._refreshHit = false;
+      }
     }
     this._drawTimer = time;
-
-    // draw hit
-    if (this._refreshHit === true) {
-      this.drawHit();
-      this._refreshHit = false;
-    }
   
     return this;
   }
