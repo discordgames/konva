@@ -8,7 +8,7 @@
    * Konva JavaScript Framework v9.0.1
    * http://konvajs.org/
    * Licensed under the MIT
-   * Date: Mon Apr 24 2023
+   * Date: Wed Apr 26 2023
    *
    * Original work Copyright (C) 2011 - 2013 by Eric Rowell (KineticJS)
    * Modified work Copyright (C) 2014 - present by Anton Lavrenov (Konva)
@@ -4804,10 +4804,14 @@
   const addGetterSetter = Factory.addGetterSetter;
   // utility to ensure layer refreshes on stage transform updates
   function refresh() {
-      var _a;
-      if (this.nodeType === 'Stage') {
+      var _a, _b;
+      if (this.nodeType === 'Shape') {
+          const shape = this;
+          (_a = shape.getLayer()) === null || _a === void 0 ? void 0 : _a.refresh();
+      }
+      else if (this.nodeType === 'Stage') {
           const stage = this;
-          (_a = stage.getLayers()) === null || _a === void 0 ? void 0 : _a.forEach((layer) => {
+          (_b = stage.getLayers()) === null || _b === void 0 ? void 0 : _b.forEach((layer) => {
               layer.refresh();
           });
       }
@@ -15733,11 +15737,6 @@
               });
               lastPos = null;
           });
-          node.on(`dragend.${this._getEventNamespace()}`, () => {
-              var _a;
-              // force refresh of layer on end of drag events
-              (_a = node.getLayer()) === null || _a === void 0 ? void 0 : _a.refresh();
-          });
       }
       getNodes() {
           return this._nodes || [];
@@ -16375,6 +16374,7 @@
           anchor.setAttrs(attrs);
       }
       update() {
+          var _a;
           var attrs = this._getNodeRect();
           this.rotation(Util._getRotation(attrs.rotation));
           var width = attrs.width;
@@ -16462,11 +16462,7 @@
               x: 0,
               y: 0,
           });
-          const layer = this.getLayer();
-          if (layer) {
-              layer.batchDraw();
-              layer.refresh();
-          }
+          (_a = this.getLayer()) === null || _a === void 0 ? void 0 : _a.batchDraw();
       }
       /**
        * determine if transformer is in active transform

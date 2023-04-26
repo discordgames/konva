@@ -2752,7 +2752,10 @@ const addGetterSetter = Factory.addGetterSetter;
 
 // utility to ensure layer refreshes on stage transform updates
 function refresh() {
-  if (this.nodeType === 'Stage') {
+  if (this.nodeType === 'Shape') {
+    const shape = this as Shape;
+    shape.getLayer()?.refresh();
+  } else if (this.nodeType === 'Stage') {
     const stage = this as Stage;
     stage.getLayers()?.forEach((layer) => {
       layer.refresh();

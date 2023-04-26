@@ -242,7 +242,7 @@ export class Transformer extends Group {
   sin: number;
   cos: number;
   _cursorChange: boolean;
-
+  
   constructor(config?: TransformerConfig) {
     // call super constructor
     super(config);
@@ -376,10 +376,6 @@ export class Transformer extends Group {
       });
       lastPos = null;
     });
-    node.on(`dragend.${this._getEventNamespace()}`, () => {
-      // force refresh of layer on end of drag events
-      node.getLayer()?.refresh();
-  })
   }
 
   getNodes() {
@@ -1221,11 +1217,7 @@ export class Transformer extends Group {
       y: 0,
     });
 
-    const layer = this.getLayer();
-    if (layer) {
-      layer.batchDraw();
-      layer.refresh();
-    }
+    this.getLayer()?.batchDraw();
   }
   /**
    * determine if transformer is in active transform
