@@ -429,7 +429,7 @@ var OBJECT_ARRAY = '[object Array]',
 const req =
   (typeof requestAnimationFrame !== 'undefined' && requestAnimationFrame) ||
   function (f) {
-    setTimeout(f, 60);
+    setTimeout(f, 16);
   };
 /**
  * @namespace Util
@@ -506,6 +506,54 @@ export const Util = {
   },
   createCanvasElement() {
     var canvas = document.createElement('canvas');
+
+
+    // OFFSCREEN TEST
+    /*
+    const EnableOffscreenCanvas = false;
+    
+    // attempt to use offscreen canvas
+    if (EnableOffscreenCanvas && canvas.transferControlToOffscreen) {
+      const offscreen = canvas.transferControlToOffscreen();
+
+      // create web worker
+      var worker = new Worker('./Web_Worker.js');
+
+      // pass canvas into webworker, so we can do all rendering inside it
+      worker.postMessage({ canvas: offscreen }, [offscreen]);
+
+      // "proxy" all DOM events from canvas into Konva engine
+      var KonvaEvents = [
+        'mouseenter',
+        'mousedown',
+        'mousemove',
+        'mouseup',
+        'mouseout',
+        'wheel',
+        'contextmenu',
+        'pointerdown',
+        'pointermove',
+        'pointerup',
+        'pointercancel',
+        'lostpointercapture',
+      ];
+
+      KonvaEvents.forEach((eventName) => {
+        canvas.addEventListener(eventName, (e: MouseEvent | PointerEvent | WheelEvent) => {
+          worker.postMessage({
+            eventName,
+            event: {
+              type: e.type,
+              clientX: e.clientX,
+              clientY: e.clientY,
+            },
+          });
+        });
+      });
+    }
+    */
+    // END TEST
+
     // on some environments canvas.style is readonly
     try {
       (<any>canvas).style = canvas.style || {};

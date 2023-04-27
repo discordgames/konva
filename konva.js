@@ -8,7 +8,7 @@
    * Konva JavaScript Framework v9.0.1
    * http://konvajs.org/
    * Licensed under the MIT
-   * Date: Wed Apr 26 2023
+   * Date: Thu Apr 27 2023
    *
    * Original work Copyright (C) 2011 - 2013 by Eric Rowell (KineticJS)
    * Modified work Copyright (C) 2014 - present by Anton Lavrenov (Konva)
@@ -581,7 +581,7 @@
   }, RGB_REGEX = /rgb\((\d{1,3}),(\d{1,3}),(\d{1,3})\)/, animQueue = [];
   const req = (typeof requestAnimationFrame !== 'undefined' && requestAnimationFrame) ||
       function (f) {
-          setTimeout(f, 60);
+          setTimeout(f, 16);
       };
   /**
    * @namespace Util
@@ -4805,15 +4805,14 @@
   // utility to ensure layer refreshes on stage transform updates
   function refresh() {
       var _a, _b;
-      if (this.nodeType === 'Shape') {
-          const shape = this;
-          (_a = shape.getLayer()) === null || _a === void 0 ? void 0 : _a.refresh();
-      }
-      else if (this.nodeType === 'Stage') {
+      if (this.nodeType === 'Stage') {
           const stage = this;
-          (_b = stage.getLayers()) === null || _b === void 0 ? void 0 : _b.forEach((layer) => {
+          (_a = stage.getLayers()) === null || _a === void 0 ? void 0 : _a.forEach((layer) => {
               layer.refresh();
           });
+      }
+      else {
+          (_b = this.getLayer()) === null || _b === void 0 ? void 0 : _b.refresh();
       }
   }
   /**
