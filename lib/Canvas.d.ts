@@ -4,6 +4,8 @@ interface ICanvasConfig {
     height?: number;
     pixelRatio?: number;
     willReadFrequently?: boolean;
+    alpha?: boolean;
+    desynchronized?: boolean;
 }
 export declare class Canvas {
     pixelRatio: number;

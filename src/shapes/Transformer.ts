@@ -1100,12 +1100,10 @@ export class Transformer extends Group {
       node.setAttrs(attrs);
       this._fire('transform', { evt: evt, target: node });
       node._fire('transform', { evt: evt, target: node });
-      node.getLayer()?.batchDraw();
     });
     this.rotation(Util._getRotation(newAttrs.rotation));
     this._resetTransformCache();
     this.update();
-    this.getLayer().batchDraw();
   }
   /**
    * force update of Konva.Transformer.
@@ -1216,8 +1214,6 @@ export class Transformer extends Group {
       x: 0,
       y: 0,
     });
-
-    this.getLayer()?.batchDraw();
   }
   /**
    * determine if transformer is in active transform

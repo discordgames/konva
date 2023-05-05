@@ -21,6 +21,7 @@ export declare const Konva: {
     pointerEventsEnabled: boolean;
     autoDrawEnabled: boolean;
     hitOnDragEnabled: boolean;
+    hitTestEnabled: boolean;
     capturePointerEventsEnabled: boolean;
     _mouseListenClick: boolean;
     _touchListenClick: boolean;
@@ -53,7 +54,8 @@ export declare const Konva: {
         isObject(val: any): val is Object;
         isValidSelector(selector: any): boolean;
         _sign(number: number): 1 | -1;
-        requestAnimFrame(callback: Function): void;
+        requestAnimFrame(callback: any): void;
+        executeAnimFrame(): void;
         createCanvasElement(): HTMLCanvasElement;
         createImageElement(): HTMLImageElement;
         _isInDocument(el: any): boolean;

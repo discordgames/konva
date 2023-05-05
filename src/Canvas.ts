@@ -7,6 +7,9 @@ import { getNumberValidator } from './Validators';
 // calculate pixel ratio
 var _pixelRatio;
 function getDevicePixelRatio() {
+  // do not bother with detecting pixel ratio
+  return Konva.pixelRatio;
+  
   if (_pixelRatio) {
     return _pixelRatio;
   }
@@ -32,6 +35,8 @@ interface ICanvasConfig {
   height?: number;
   pixelRatio?: number;
   willReadFrequently?: boolean;
+  alpha?: boolean;
+  desynchronized?: boolean;
 }
 
 /**
@@ -174,11 +179,13 @@ export class SceneCanvas extends Canvas {
   constructor(
     config: ICanvasConfig = {}
   ) {
-    config = { width: 0, height: 0, pixelRatio: 1, willReadFrequently: false, ... config };
+    config = { width: 0, height: 0, pixelRatio: Konva.pixelRatio, willReadFrequently: false, alpha: true, desynchronized: false, ...config };
     super(config);
     
     this.context = new SceneContext(this, {
       willReadFrequently: config.willReadFrequently,
+      alpha: config.alpha,
+      desynchronized: config.desynchronized,
     });
     this.setSize(config.width, config.height);
   }
@@ -187,10 +194,12 @@ export class SceneCanvas extends Canvas {
 export class HitCanvas extends Canvas {
   hitCanvas = true;
   constructor(config: ICanvasConfig = {}) {
-    config = { width: 0, height: 0, pixelRatio: 1, willReadFrequently: true, ... config };
+    config = { width: 0, height: 0, pixelRatio: Konva.pixelRatio, willReadFrequently: true, alpha: false, desynchronized: false, ...config };
     super(config);
 
-    this.context = new HitContext(this);
+    this.context = new HitContext(this, {
+      desynchronized: config.desynchronized
+    });
     this.setSize(config.width, config.height);
   }
 }

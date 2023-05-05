@@ -10,6 +10,7 @@ export declare const Konva: {
     pointerEventsEnabled: boolean;
     autoDrawEnabled: boolean;
     hitOnDragEnabled: boolean;
+    hitTestEnabled: boolean;
     capturePointerEventsEnabled: boolean;
     _mouseListenClick: boolean;
     _touchListenClick: boolean;

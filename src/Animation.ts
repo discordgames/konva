@@ -236,7 +236,7 @@ export class Animation {
       if (!layerHash.hasOwnProperty(key)) {
         continue;
       }
-      layerHash[key].batchDraw();
+      layerHash[key]._requestDraw();
     }
   }
   static _animationLoop() {

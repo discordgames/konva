@@ -34,6 +34,7 @@ export interface NodeConfig {
     globalCompositeOperation?: globalCompositeOperationType;
     filters?: Array<Filter>;
     drawRate?: number;
+    alpha?: boolean;
 }
 type NodeEventMap = GlobalEventHandlersEventMap & {
     [index: string]: any;
@@ -128,6 +129,7 @@ export declare abstract class Node<Config extends NodeConfig = NodeConfig> {
     _clearCaches(): void;
     _remove(): void;
     destroy(): this;
+    refresh(): void;
     getAttr(attr: string): any;
     getAncestors(): Node<NodeConfig>[];
     getAttrs(): any;
@@ -248,7 +250,7 @@ export declare abstract class Node<Config extends NodeConfig = NodeConfig> {
     removeName(name: any): this;
     setAttr(attr: any, val: any): this;
     _requestDraw(): void;
-    _setAttr(key: any, val: any): void;
+    _setAttr(key: any, val: any): boolean;
     _setComponentAttr(key: any, component: any, val: any): void;
     _fireAndBubble(eventType: any, evt: any, compareShape?: any): void;
     _getProtoListeners(eventType: any): any;

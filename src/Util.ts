@@ -424,12 +424,13 @@ var OBJECT_ARRAY = '[object Array]',
     yellowgreen: [154, 205, 5],
   },
   RGB_REGEX = /rgb\((\d{1,3}),(\d{1,3}),(\d{1,3})\)/,
-  animQueue: Array<Function> = [];
+  animQueue: Array<Function> = [],
+  animHandle: number | undefined = undefined;
 
 const req =
   (typeof requestAnimationFrame !== 'undefined' && requestAnimationFrame) ||
   function (f) {
-    setTimeout(f, 16);
+    return setTimeout(f, 16);
   };
 /**
  * @namespace Util
@@ -492,68 +493,30 @@ export const Util = {
     }
   },
 
-  requestAnimFrame(callback: Function) {
+  requestAnimFrame(callback) {
+     // ensure we only process unique work
+     for (let i = 0, n = animQueue.length; i < n; ++i) {
+      if (animQueue[i] === callback) {
+          return;
+      }
+    }
+
     animQueue.push(callback);
     if (animQueue.length === 1) {
-      req(function () {
-        const queue = animQueue;
-        animQueue = [];
-        queue.forEach(function (cb) {
-          cb();
-        });
-      });
+        req(exports.Util.executeAnimFrame);
     }
   },
+
+  executeAnimFrame() {
+      const queue = animQueue;
+      animQueue = [];
+      queue.forEach(function (cb) {
+          cb();
+      });
+  },
+  
   createCanvasElement() {
     var canvas = document.createElement('canvas');
-
-
-    // OFFSCREEN TEST
-    /*
-    const EnableOffscreenCanvas = false;
-    
-    // attempt to use offscreen canvas
-    if (EnableOffscreenCanvas && canvas.transferControlToOffscreen) {
-      const offscreen = canvas.transferControlToOffscreen();
-
-      // create web worker
-      var worker = new Worker('./Web_Worker.js');
-
-      // pass canvas into webworker, so we can do all rendering inside it
-      worker.postMessage({ canvas: offscreen }, [offscreen]);
-
-      // "proxy" all DOM events from canvas into Konva engine
-      var KonvaEvents = [
-        'mouseenter',
-        'mousedown',
-        'mousemove',
-        'mouseup',
-        'mouseout',
-        'wheel',
-        'contextmenu',
-        'pointerdown',
-        'pointermove',
-        'pointerup',
-        'pointercancel',
-        'lostpointercapture',
-      ];
-
-      KonvaEvents.forEach((eventName) => {
-        canvas.addEventListener(eventName, (e: MouseEvent | PointerEvent | WheelEvent) => {
-          worker.postMessage({
-            eventName,
-            event: {
-              type: e.type,
-              clientX: e.clientX,
-              clientY: e.clientY,
-            },
-          });
-        });
-      });
-    }
-    */
-    // END TEST
-
     // on some environments canvas.style is readonly
     try {
       (<any>canvas).style = canvas.style || {};

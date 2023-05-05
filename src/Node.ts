@@ -73,6 +73,7 @@ export interface NodeConfig {
   globalCompositeOperation?: globalCompositeOperationType;
   filters?: Array<Filter>;
   drawRate?: number;
+  alpha?: boolean;
 }
 
 // CONSTANTS
@@ -262,7 +263,7 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
     }
 
     this._clearSelfAndDescendantCache();
-    this._requestDraw();
+    //this.refresh();
     return this;
   }
   /**
@@ -440,7 +441,7 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
       y: y,
     });
 
-    this._requestDraw();
+    this.refresh();
 
     return this;
   }
@@ -873,6 +874,15 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
     this.remove();
     this.clearCache();
     return this;
+  }
+
+  refresh() {
+    // ensure a re-render + hit refresh
+    this._drawTimer = 0;
+    this._drawAccumulation = 0;
+    this._refreshHit = true;
+
+    this._requestDraw();
   }
   /**
    * get attr
@@ -2264,7 +2274,7 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
   _setAttr(key, val) {
     var oldVal = this.attrs[key];
     if (oldVal === val && !Util.isObject(val)) {
-      return;
+      return false;
     }
     if (val === undefined || val === null) {
       delete this.attrs[key];
@@ -2274,7 +2284,8 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
     if (this._shouldFireChangeEvents) {
       this._fireChangeEvent(key, oldVal, val);
     }
-    this._requestDraw();
+    //this.refresh();
+    return true;
   }
   _setComponentAttr(key, component, val) {
     var oldVal;
@@ -2381,11 +2392,11 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
     const elapsedDraw = time - this._drawTimer;
     this._drawAccumulation += elapsedDraw;
     if (this._drawAccumulation >= this._drawRate) {
-      this._drawAccumulation = this._drawAccumulation % this._drawRate;
+      this._drawAccumulation = this._drawRate ? this._drawAccumulation % this._drawRate : 0;
       this.drawScene();
 
       // draw hit
-      if (this._refreshHit === true) {
+      if (this._refreshHit === true && Konva.hitTestEnabled) {
         this.drawHit();
         this._refreshHit = false;
       }
@@ -2470,7 +2481,7 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
       this._lastPos.y !== newNodePos.y
     ) {
       this.setAbsolutePosition(newNodePos);
-      this._requestDraw();
+      //this.refresh();
     }
 
     this._lastPos = newNodePos;
@@ -2752,14 +2763,8 @@ const addGetterSetter = Factory.addGetterSetter;
 
 // utility to ensure layer refreshes on stage transform updates
 function refresh() {
-  if (this.nodeType === 'Stage') {
-    const stage = this as Stage;
-    stage.getLayers()?.forEach((layer) => {
-      layer.refresh();
-    });
-  } else {
-    this.getLayer()?.refresh();
-  }
+  const drawNode = this.getLayer() || this.getStage();
+  drawNode?.refresh();
 }
 
 /**

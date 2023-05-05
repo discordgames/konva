@@ -279,9 +279,22 @@ export class Stage extends Container<Layer> {
       stages.splice(index, 1);
     }
 
-    Util.releaseCanvas(this.bufferCanvas._canvas, this.bufferHitCanvas._canvas)
+    this.bufferCanvas && Util.releaseCanvas(this.bufferCanvas._canvas);
+    this.bufferCanvas = undefined;
+    
+    this.bufferHitCanvas && Util.releaseCanvas(this.bufferHitCanvas._canvas);
+    this.bufferHitCanvas = undefined;
 
     return this;
+  }
+
+  refresh() {
+    this.getLayers()?.forEach((layer) => {
+      layer._drawTimer = 0;
+      layer._drawAccumulation = 0;
+      layer._refreshHit = true;
+    });
+    super.refresh();
   }
   /**
    * returns ABSOLUTE pointer position which can be a touch position or mouse position
@@ -389,8 +402,8 @@ export class Stage extends Container<Layer> {
       this.content.style.height = height + PX;
     }
 
-    this.bufferCanvas.setSize(width, height);
-    this.bufferHitCanvas.setSize(width, height);
+    this.bufferCanvas?.setSize(width, height);
+    this.bufferHitCanvas?.setSize(width, height);
 
     // set layer dimensions
     this.children.forEach((layer) => {
@@ -538,38 +551,40 @@ export class Stage extends Container<Layer> {
     this.setPointersPositions(evt);
 
     var triggeredOnShape = false;
-    this._changedPointerPositions.forEach((pos) => {
-      var shape = this.getIntersection(pos);
-      DD.justDragged = false;
-      // probably we are staring a click
-      Konva['_' + eventType + 'ListenClick'] = true;
+    if (Konva.hitTestEnabled) {
+      this._changedPointerPositions.forEach((pos) => {
+        var shape = this.getIntersection(pos);
+        DD.justDragged = false;
+        // probably we are staring a click
+        Konva['_' + eventType + 'ListenClick'] = true;
 
-      // no shape detected? do nothing
-      const hasShape = shape && shape.isListening();
-      if (!hasShape) {
-        return;
-      }
+        // no shape detected? do nothing
+        const hasShape = shape && shape.isListening();
+        if (!hasShape) {
+          return;
+        }
 
-      if (Konva.capturePointerEventsEnabled) {
-        shape.setPointerCapture(pos.id);
-      }
+        if (Konva.capturePointerEventsEnabled) {
+          shape.setPointerCapture(pos.id);
+        }
 
-      // save where we started the click
-      this[eventType + 'ClickStartShape'] = shape;
+        // save where we started the click
+        this[eventType + 'ClickStartShape'] = shape;
 
-      shape._fireAndBubble(events.pointerdown, {
-        evt: evt,
-        pointerId: pos.id,
+        shape._fireAndBubble(events.pointerdown, {
+          evt: evt,
+          pointerId: pos.id,
+        });
+        triggeredOnShape = true;
+
+        // TODO: test in iframe
+        // only call preventDefault if the shape is listening for events
+        const isTouch = evt.type.indexOf('touch') >= 0;
+        if (shape.preventDefault() && evt.cancelable && isTouch) {
+          evt.preventDefault();
+        }
       });
-      triggeredOnShape = true;
-
-      // TODO: test in iframe
-      // only call preventDefault if the shape is listening for events
-      const isTouch = evt.type.indexOf('touch') >= 0;
-      if (shape.preventDefault() && evt.cancelable && isTouch) {
-        evt.preventDefault();
-      }
-    });
+    }
 
     // trigger down on stage if not already
     if (!triggeredOnShape) {
@@ -599,47 +614,50 @@ export class Stage extends Container<Layer> {
 
     var processedShapesIds = {};
     let triggeredOnShape = false;
-    var targetShape = this._getTargetShape(eventType);
-    this._changedPointerPositions.forEach((pos) => {
-      const shape = (PointerEvents.getCapturedShape(pos.id) ||
-        this.getIntersection(pos)) as Shape;
-      const pointerId = pos.id;
-      const event = { evt: evt, pointerId };
+    
+    if (Konva.hitTestEnabled) {
+      var targetShape = this._getTargetShape(eventType);
+      this._changedPointerPositions.forEach((pos) => {
+        const shape = (PointerEvents.getCapturedShape(pos.id) ||
+          this.getIntersection(pos)) as Shape;
+        const pointerId = pos.id;
+        const event = { evt: evt, pointerId };
 
-      var differentTarget = targetShape !== shape;
+        var differentTarget = targetShape !== shape;
 
-      if (differentTarget && targetShape) {
-        targetShape._fireAndBubble(events.pointerout, { ...event }, shape);
-        targetShape._fireAndBubble(events.pointerleave, { ...event }, shape);
-      }
-
-      if (shape) {
-        if (processedShapesIds[shape._id]) {
-          return;
+        if (differentTarget && targetShape) {
+          targetShape._fireAndBubble(events.pointerout, { ...event }, shape);
+          targetShape._fireAndBubble(events.pointerleave, { ...event }, shape);
         }
-        processedShapesIds[shape._id] = true;
-      }
 
-      if (shape && shape.isListening()) {
-        triggeredOnShape = true;
-        if (differentTarget) {
-          shape._fireAndBubble(events.pointerover, { ...event }, targetShape);
-          shape._fireAndBubble(events.pointerenter, { ...event }, targetShape);
-          this[eventType + 'targetShape'] = shape;
+        if (shape) {
+          if (processedShapesIds[shape._id]) {
+            return;
+          }
+          processedShapesIds[shape._id] = true;
         }
-        shape._fireAndBubble(events.pointermove, { ...event });
-      } else {
-        if (targetShape) {
-          this._fire(events.pointerover, {
-            evt: evt,
-            target: this,
-            currentTarget: this,
-            pointerId,
-          });
-          this[eventType + 'targetShape'] = null;
+
+        if (shape && shape.isListening()) {
+          triggeredOnShape = true;
+          if (differentTarget) {
+            shape._fireAndBubble(events.pointerover, { ...event }, targetShape);
+            shape._fireAndBubble(events.pointerenter, { ...event }, targetShape);
+            this[eventType + 'targetShape'] = shape;
+          }
+          shape._fireAndBubble(events.pointermove, { ...event });
+        } else {
+          if (targetShape) {
+            this._fire(events.pointerover, {
+              evt: evt,
+              target: this,
+              currentTarget: this,
+              pointerId,
+            });
+            this[eventType + 'targetShape'] = null;
+          }
         }
-      }
-    });
+      });
+    }
 
     if (!triggeredOnShape) {
       this._fire(events.pointermove, {
@@ -884,16 +902,18 @@ export class Stage extends Container<Layer> {
     };
   }
   _buildDOM() {
-    this.bufferCanvas = new SceneCanvas({
-      pixelRatio: 1,
-      width: this.width(),
-      height: this.height(),
-    });
-    this.bufferHitCanvas = new HitCanvas({
-      pixelRatio: 1,
-      width: this.width(),
-      height: this.height(),
-    });
+    // we disable 'perfectDrawing' so these buffers are unnecessary
+    
+    // this.bufferCanvas = new SceneCanvas({
+    //   pixelRatio: 1,
+    //   width: this.width(),
+    //   height: this.height(),
+    // });
+    // this.bufferHitCanvas = new HitCanvas({
+    //   pixelRatio: 1,
+    //   width: this.width(),
+    //   height: this.height(),
+    // });
 
     if (!Konva.isBrowser) {
       return;

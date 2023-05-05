@@ -8,7 +8,7 @@
    * Konva JavaScript Framework v9.0.1
    * http://konvajs.org/
    * Licensed under the MIT
-   * Date: Thu Apr 27 2023
+   * Date: Thu May 04 2023
    *
    * Original work Copyright (C) 2011 - 2013 by Eric Rowell (KineticJS)
    * Modified work Copyright (C) 2014 - present by Anton Lavrenov (Konva)
@@ -37,7 +37,8 @@
       _global: glob,
       version: '9.0.1',
       isBrowser: detectBrowser(),
-      isUnminified: /param/.test(function (param) { }.toString()),
+      // disable validation checks on attribute writes
+      isUnminified: false,
       dblClickWindow: 400,
       getAngle(angle) {
           return Konva$2.angleDeg ? angle * PI_OVER_180 : angle;
@@ -65,6 +66,17 @@
        * Konva.hitOnDragEnabled = true;
        */
       hitOnDragEnabled: false,
+      /**
+       * Should we enable hit detection, by default it is true.
+       * But on some rare cases you want to teporarily disable intersections. Just set it to false.
+       * @property hitTestEnabled
+       * @default false
+       * @name hitTestEnabled
+       * @memberof Konva
+       * @example
+       * Konva.hitTestEnabled = true;
+       */
+      hitTestEnabled: true,
       /**
        * Should we capture touch events and bind them to the touchstart target? That is how it works on DOM elements.
        * The case: we touchstart on div1, then touchmove out of that element into another element div2.
@@ -581,7 +593,7 @@
   }, RGB_REGEX = /rgb\((\d{1,3}),(\d{1,3}),(\d{1,3})\)/, animQueue = [];
   const req = (typeof requestAnimationFrame !== 'undefined' && requestAnimationFrame) ||
       function (f) {
-          setTimeout(f, 16);
+          return setTimeout(f, 16);
       };
   /**
    * @namespace Util
@@ -641,64 +653,26 @@
           }
       },
       requestAnimFrame(callback) {
+          // ensure we only process unique work
+          for (let i = 0, n = animQueue.length; i < n; ++i) {
+              if (animQueue[i] === callback) {
+                  return;
+              }
+          }
           animQueue.push(callback);
           if (animQueue.length === 1) {
-              req(function () {
-                  const queue = animQueue;
-                  animQueue = [];
-                  queue.forEach(function (cb) {
-                      cb();
-                  });
-              });
+              req(exports.Util.executeAnimFrame);
           }
+      },
+      executeAnimFrame() {
+          const queue = animQueue;
+          animQueue = [];
+          queue.forEach(function (cb) {
+              cb();
+          });
       },
       createCanvasElement() {
           var canvas = document.createElement('canvas');
-          // OFFSCREEN TEST
-          /*
-          const EnableOffscreenCanvas = false;
-          
-          // attempt to use offscreen canvas
-          if (EnableOffscreenCanvas && canvas.transferControlToOffscreen) {
-            const offscreen = canvas.transferControlToOffscreen();
-      
-            // create web worker
-            var worker = new Worker('./Web_Worker.js');
-      
-            // pass canvas into webworker, so we can do all rendering inside it
-            worker.postMessage({ canvas: offscreen }, [offscreen]);
-      
-            // "proxy" all DOM events from canvas into Konva engine
-            var KonvaEvents = [
-              'mouseenter',
-              'mousedown',
-              'mousemove',
-              'mouseup',
-              'mouseout',
-              'wheel',
-              'contextmenu',
-              'pointerdown',
-              'pointermove',
-              'pointerup',
-              'pointercancel',
-              'lostpointercapture',
-            ];
-      
-            KonvaEvents.forEach((eventName) => {
-              canvas.addEventListener(eventName, (e: MouseEvent | PointerEvent | WheelEvent) => {
-                worker.postMessage({
-                  eventName,
-                  event: {
-                    type: e.type,
-                    clientX: e.clientX,
-                    clientY: e.clientY,
-                  },
-                });
-              });
-            });
-          }
-          */
-          // END TEST
           // on some environments canvas.style is readonly
           try {
               canvas.style = canvas.style || {};
@@ -1371,10 +1345,8 @@
               if (validator && val !== undefined && val !== null) {
                   val = validator.call(this, val, attr);
               }
-              this._setAttr(attr, val);
-              if (after) {
-                  after.call(this);
-              }
+              // call 'after' only if set sttribute produces a change
+              this._setAttr(attr, val) && (after === null || after === void 0 ? void 0 : after.call(this));
               return this;
           };
       },
@@ -1399,20 +1371,21 @@
               if (basicValidator) {
                   basicValidator.call(this, val, attr);
               }
+              let changed = false;
               for (key in val) {
                   if (!val.hasOwnProperty(key)) {
                       continue;
                   }
-                  this._setAttr(attr + capitalize(key), val[key]);
+                  changed = changed || this._setAttr(attr + capitalize(key), val[key]);
               }
               if (!val) {
                   components.forEach((component) => {
-                      this._setAttr(attr + capitalize(component), undefined);
+                      changed = changed || this._setAttr(attr + capitalize(component), undefined);
                   });
               }
-              this._fireChangeEvent(attr, oldVal, val);
-              if (after) {
-                  after.call(this);
+              if (changed) {
+                  this._fireChangeEvent(attr, oldVal, val);
+                  after === null || after === void 0 ? void 0 : after.call(this);
               }
               return this;
           };
@@ -2105,10 +2078,12 @@
       });
   });
   class SceneContext extends Context {
-      constructor(canvas, { willReadFrequently = false } = {}) {
+      constructor(canvas, { willReadFrequently = false, alpha = true, desynchronized = false } = {}) {
           super(canvas);
           this._context = canvas._canvas.getContext('2d', {
               willReadFrequently,
+              desynchronized,
+              alpha,
           });
       }
       _fillColor(shape) {
@@ -2225,10 +2200,12 @@
       }
   }
   class HitContext extends Context {
-      constructor(canvas) {
+      constructor(canvas, { desynchronized = false }) {
           super(canvas);
           this._context = canvas._canvas.getContext('2d', {
               willReadFrequently: true,
+              alpha: false,
+              desynchronized,
           });
       }
       _fill(shape) {
@@ -2264,25 +2241,9 @@
       }
   }
 
-  // calculate pixel ratio
-  var _pixelRatio;
   function getDevicePixelRatio() {
-      if (_pixelRatio) {
-          return _pixelRatio;
-      }
-      var canvas = Util.createCanvasElement();
-      var context = canvas.getContext('2d');
-      _pixelRatio = (function () {
-          var devicePixelRatio = Konva$2._global.devicePixelRatio || 1, backingStoreRatio = context.webkitBackingStorePixelRatio ||
-              context.mozBackingStorePixelRatio ||
-              context.msBackingStorePixelRatio ||
-              context.oBackingStorePixelRatio ||
-              context.backingStorePixelRatio ||
-              1;
-          return devicePixelRatio / backingStoreRatio;
-      })();
-      Util.releaseCanvas(canvas);
-      return _pixelRatio;
+      // do not bother with detecting pixel ratio
+      return Konva$2.pixelRatio;
   }
   /**
    * Canvas Renderer constructor. It is a wrapper around native canvas element.
@@ -2405,20 +2366,24 @@
   Factory.addGetterSetter(Canvas, 'pixelRatio', undefined, getNumberValidator());
   class SceneCanvas extends Canvas {
       constructor(config = {}) {
-          config = Object.assign({ width: 0, height: 0, pixelRatio: 1, willReadFrequently: false }, config);
+          config = Object.assign({ width: 0, height: 0, pixelRatio: Konva$2.pixelRatio, willReadFrequently: false, alpha: true, desynchronized: false }, config);
           super(config);
           this.context = new SceneContext(this, {
               willReadFrequently: config.willReadFrequently,
+              alpha: config.alpha,
+              desynchronized: config.desynchronized,
           });
           this.setSize(config.width, config.height);
       }
   }
   class HitCanvas extends Canvas {
       constructor(config = {}) {
-          config = Object.assign({ width: 0, height: 0, pixelRatio: 1, willReadFrequently: true }, config);
+          config = Object.assign({ width: 0, height: 0, pixelRatio: Konva$2.pixelRatio, willReadFrequently: true, alpha: false, desynchronized: false }, config);
           super(config);
           this.hitCanvas = true;
-          this.context = new HitContext(this);
+          this.context = new HitContext(this, {
+              desynchronized: config.desynchronized
+          });
           this.setSize(config.width, config.height);
       }
   }
@@ -2691,7 +2656,7 @@
               this._cache.delete(CANVAS);
           }
           this._clearSelfAndDescendantCache();
-          this._requestDraw();
+          //this.refresh();
           return this;
       }
       /**
@@ -2826,7 +2791,7 @@
               x: x,
               y: y,
           });
-          this._requestDraw();
+          this.refresh();
           return this;
       }
       /**
@@ -3178,6 +3143,13 @@
           this.remove();
           this.clearCache();
           return this;
+      }
+      refresh() {
+          // ensure a re-render + hit refresh
+          this._drawTimer = 0;
+          this._drawAccumulation = 0;
+          this._refreshHit = true;
+          this._requestDraw();
       }
       /**
        * get attr
@@ -4447,7 +4419,7 @@
       _setAttr(key, val) {
           var oldVal = this.attrs[key];
           if (oldVal === val && !Util.isObject(val)) {
-              return;
+              return false;
           }
           if (val === undefined || val === null) {
               delete this.attrs[key];
@@ -4458,7 +4430,8 @@
           if (this._shouldFireChangeEvents) {
               this._fireChangeEvent(key, oldVal, val);
           }
-          this._requestDraw();
+          //this.refresh();
+          return true;
       }
       _setComponentAttr(key, component, val) {
           var oldVal;
@@ -4552,10 +4525,10 @@
           const elapsedDraw = time - this._drawTimer;
           this._drawAccumulation += elapsedDraw;
           if (this._drawAccumulation >= this._drawRate) {
-              this._drawAccumulation = this._drawAccumulation % this._drawRate;
+              this._drawAccumulation = this._drawRate ? this._drawAccumulation % this._drawRate : 0;
               this.drawScene();
               // draw hit
-              if (this._refreshHit === true) {
+              if (this._refreshHit === true && Konva$2.hitTestEnabled) {
                   this.drawHit();
                   this._refreshHit = false;
               }
@@ -4624,7 +4597,7 @@
               this._lastPos.x !== newNodePos.x ||
               this._lastPos.y !== newNodePos.y) {
               this.setAbsolutePosition(newNodePos);
-              this._requestDraw();
+              //this.refresh();
           }
           this._lastPos = newNodePos;
       }
@@ -4804,16 +4777,8 @@
   const addGetterSetter = Factory.addGetterSetter;
   // utility to ensure layer refreshes on stage transform updates
   function refresh() {
-      var _a, _b;
-      if (this.nodeType === 'Stage') {
-          const stage = this;
-          (_a = stage.getLayers()) === null || _a === void 0 ? void 0 : _a.forEach((layer) => {
-              layer.refresh();
-          });
-      }
-      else {
-          (_b = this.getLayer()) === null || _b === void 0 ? void 0 : _b.refresh();
-      }
+      const drawNode = this.getLayer() || this.getStage();
+      drawNode === null || drawNode === void 0 ? void 0 : drawNode.refresh();
   }
   /**
    * get/set zIndex relative to the node's siblings who share the same parent.
@@ -5412,7 +5377,7 @@
           });
           this.children = [];
           // because all children were detached from parent, request draw via container
-          this._requestDraw();
+          this.refresh();
           return this;
       }
       /**
@@ -5429,7 +5394,7 @@
           });
           this.children = [];
           // because all children were detached from parent, request draw via container
-          this._requestDraw();
+          this.refresh();
           return this;
       }
       /**
@@ -5469,7 +5434,7 @@
           this._fire('add', {
               child: child,
           });
-          this._requestDraw();
+          this.refresh();
           // chainable
           return this;
       }
@@ -5651,7 +5616,7 @@
           (_a = this.children) === null || _a === void 0 ? void 0 : _a.forEach(function (child, n) {
               child.index = n;
           });
-          this._requestDraw();
+          this.refresh();
       }
       drawScene(can, top) {
           var layer = this.getLayer(), canvas = can || (layer && layer.getCanvas()), context = canvas && canvas.getContext(), cachedCanvas = this._getCanvasCache(), cachedSceneCanvas = cachedCanvas && cachedCanvas.scene;
@@ -5660,11 +5625,11 @@
               return this;
           }
           if (cachedSceneCanvas) {
-              context.save();
+              const t = context._context.getTransform();
               var m = this.getAbsoluteTransform(top).getMatrix();
               context.transform(m[0], m[1], m[2], m[3], m[4], m[5]);
               this._drawCachedSceneCanvas(context);
-              context.restore();
+              context._context.setTransform(t);
           }
           else {
               this._drawChildren('drawScene', canvas, top);
@@ -5677,11 +5642,11 @@
           }
           var layer = this.getLayer(), canvas = can || (layer && layer.hitCanvas), context = canvas && canvas.getContext(), cachedCanvas = this._getCanvasCache(), cachedHitCanvas = cachedCanvas && cachedCanvas.hit;
           if (cachedHitCanvas) {
-              context.save();
+              const t = context._context.getTransform();
               var m = this.getAbsoluteTransform(top).getMatrix();
               context.transform(m[0], m[1], m[2], m[3], m[4], m[5]);
               this._drawCachedHitCanvas(context);
-              context.restore();
+              context._context.setTransform(t);
           }
           else {
               this._drawChildren('drawHit', canvas, top);
@@ -6159,8 +6124,20 @@
           if (index > -1) {
               stages.splice(index, 1);
           }
-          Util.releaseCanvas(this.bufferCanvas._canvas, this.bufferHitCanvas._canvas);
+          this.bufferCanvas && Util.releaseCanvas(this.bufferCanvas._canvas);
+          this.bufferCanvas = undefined;
+          this.bufferHitCanvas && Util.releaseCanvas(this.bufferHitCanvas._canvas);
+          this.bufferHitCanvas = undefined;
           return this;
+      }
+      refresh() {
+          var _a;
+          (_a = this.getLayers()) === null || _a === void 0 ? void 0 : _a.forEach((layer) => {
+              layer._drawTimer = 0;
+              layer._drawAccumulation = 0;
+              layer._refreshHit = true;
+          });
+          super.refresh();
       }
       /**
        * returns ABSOLUTE pointer position which can be a touch position or mouse position
@@ -6244,6 +6221,7 @@
           return null;
       }
       _resizeDOM() {
+          var _a, _b;
           var width = this.width();
           var height = this.height();
           if (this.content) {
@@ -6251,8 +6229,8 @@
               this.content.style.width = width + PX;
               this.content.style.height = height + PX;
           }
-          this.bufferCanvas.setSize(width, height);
-          this.bufferHitCanvas.setSize(width, height);
+          (_a = this.bufferCanvas) === null || _a === void 0 ? void 0 : _a.setSize(width, height);
+          (_b = this.bufferHitCanvas) === null || _b === void 0 ? void 0 : _b.setSize(width, height);
           // set layer dimensions
           this.children.forEach((layer) => {
               layer.setSize({ width, height });
@@ -6382,33 +6360,35 @@
           }
           this.setPointersPositions(evt);
           var triggeredOnShape = false;
-          this._changedPointerPositions.forEach((pos) => {
-              var shape = this.getIntersection(pos);
-              DD.justDragged = false;
-              // probably we are staring a click
-              Konva$2['_' + eventType + 'ListenClick'] = true;
-              // no shape detected? do nothing
-              const hasShape = shape && shape.isListening();
-              if (!hasShape) {
-                  return;
-              }
-              if (Konva$2.capturePointerEventsEnabled) {
-                  shape.setPointerCapture(pos.id);
-              }
-              // save where we started the click
-              this[eventType + 'ClickStartShape'] = shape;
-              shape._fireAndBubble(events.pointerdown, {
-                  evt: evt,
-                  pointerId: pos.id,
+          if (Konva$2.hitTestEnabled) {
+              this._changedPointerPositions.forEach((pos) => {
+                  var shape = this.getIntersection(pos);
+                  DD.justDragged = false;
+                  // probably we are staring a click
+                  Konva$2['_' + eventType + 'ListenClick'] = true;
+                  // no shape detected? do nothing
+                  const hasShape = shape && shape.isListening();
+                  if (!hasShape) {
+                      return;
+                  }
+                  if (Konva$2.capturePointerEventsEnabled) {
+                      shape.setPointerCapture(pos.id);
+                  }
+                  // save where we started the click
+                  this[eventType + 'ClickStartShape'] = shape;
+                  shape._fireAndBubble(events.pointerdown, {
+                      evt: evt,
+                      pointerId: pos.id,
+                  });
+                  triggeredOnShape = true;
+                  // TODO: test in iframe
+                  // only call preventDefault if the shape is listening for events
+                  const isTouch = evt.type.indexOf('touch') >= 0;
+                  if (shape.preventDefault() && evt.cancelable && isTouch) {
+                      evt.preventDefault();
+                  }
               });
-              triggeredOnShape = true;
-              // TODO: test in iframe
-              // only call preventDefault if the shape is listening for events
-              const isTouch = evt.type.indexOf('touch') >= 0;
-              if (shape.preventDefault() && evt.cancelable && isTouch) {
-                  evt.preventDefault();
-              }
-          });
+          }
           // trigger down on stage if not already
           if (!triggeredOnShape) {
               this._fire(events.pointerdown, {
@@ -6435,44 +6415,46 @@
           }
           var processedShapesIds = {};
           let triggeredOnShape = false;
-          var targetShape = this._getTargetShape(eventType);
-          this._changedPointerPositions.forEach((pos) => {
-              const shape = (getCapturedShape(pos.id) ||
-                  this.getIntersection(pos));
-              const pointerId = pos.id;
-              const event = { evt: evt, pointerId };
-              var differentTarget = targetShape !== shape;
-              if (differentTarget && targetShape) {
-                  targetShape._fireAndBubble(events.pointerout, Object.assign({}, event), shape);
-                  targetShape._fireAndBubble(events.pointerleave, Object.assign({}, event), shape);
-              }
-              if (shape) {
-                  if (processedShapesIds[shape._id]) {
-                      return;
+          if (Konva$2.hitTestEnabled) {
+              var targetShape = this._getTargetShape(eventType);
+              this._changedPointerPositions.forEach((pos) => {
+                  const shape = (getCapturedShape(pos.id) ||
+                      this.getIntersection(pos));
+                  const pointerId = pos.id;
+                  const event = { evt: evt, pointerId };
+                  var differentTarget = targetShape !== shape;
+                  if (differentTarget && targetShape) {
+                      targetShape._fireAndBubble(events.pointerout, Object.assign({}, event), shape);
+                      targetShape._fireAndBubble(events.pointerleave, Object.assign({}, event), shape);
                   }
-                  processedShapesIds[shape._id] = true;
-              }
-              if (shape && shape.isListening()) {
-                  triggeredOnShape = true;
-                  if (differentTarget) {
-                      shape._fireAndBubble(events.pointerover, Object.assign({}, event), targetShape);
-                      shape._fireAndBubble(events.pointerenter, Object.assign({}, event), targetShape);
-                      this[eventType + 'targetShape'] = shape;
+                  if (shape) {
+                      if (processedShapesIds[shape._id]) {
+                          return;
+                      }
+                      processedShapesIds[shape._id] = true;
                   }
-                  shape._fireAndBubble(events.pointermove, Object.assign({}, event));
-              }
-              else {
-                  if (targetShape) {
-                      this._fire(events.pointerover, {
-                          evt: evt,
-                          target: this,
-                          currentTarget: this,
-                          pointerId,
-                      });
-                      this[eventType + 'targetShape'] = null;
+                  if (shape && shape.isListening()) {
+                      triggeredOnShape = true;
+                      if (differentTarget) {
+                          shape._fireAndBubble(events.pointerover, Object.assign({}, event), targetShape);
+                          shape._fireAndBubble(events.pointerenter, Object.assign({}, event), targetShape);
+                          this[eventType + 'targetShape'] = shape;
+                      }
+                      shape._fireAndBubble(events.pointermove, Object.assign({}, event));
                   }
-              }
-          });
+                  else {
+                      if (targetShape) {
+                          this._fire(events.pointerover, {
+                              evt: evt,
+                              target: this,
+                              currentTarget: this,
+                              pointerId,
+                          });
+                          this[eventType + 'targetShape'] = null;
+                      }
+                  }
+              });
+          }
           if (!triggeredOnShape) {
               this._fire(events.pointermove, {
                   evt: evt,
@@ -6686,16 +6668,17 @@
           };
       }
       _buildDOM() {
-          this.bufferCanvas = new SceneCanvas({
-              pixelRatio: 1,
-              width: this.width(),
-              height: this.height(),
-          });
-          this.bufferHitCanvas = new HitCanvas({
-              pixelRatio: 1,
-              width: this.width(),
-              height: this.height(),
-          });
+          // we disable 'perfectDrawing' so these buffers are unnecessary
+          // this.bufferCanvas = new SceneCanvas({
+          //   pixelRatio: 1,
+          //   width: this.width(),
+          //   height: this.height(),
+          // });
+          // this.bufferHitCanvas = new HitCanvas({
+          //   pixelRatio: 1,
+          //   width: this.width(),
+          //   height: this.height(),
+          // });
           if (!Konva$2.isBrowser) {
               return;
           }
@@ -7117,11 +7100,11 @@
           // it probably will be simpler, then copy/paste the code
           var _a;
           // buffer canvas is available only inside the stage
-          if (!this.getStage()) {
+          if (!this.getStage() || !this.getStage().bufferCanvas) {
               return false;
           }
-          // force skip buffer canvas
-          const perfectDrawEnabled = (_a = this.attrs.perfectDrawEnabled) !== null && _a !== void 0 ? _a : true;
+          // force skip buffer canvas  (assume no perfect drawing by default)
+          const perfectDrawEnabled = (_a = this.attrs.perfectDrawEnabled) !== null && _a !== void 0 ? _a : false;
           if (!perfectDrawEnabled) {
               return false;
           }
@@ -7220,11 +7203,11 @@
           }
           // if node is cached we just need to draw from cache
           if (cachedCanvas) {
-              context.save();
+              const t = context._context.getTransform();
               var m = this.getAbsoluteTransform(top).getMatrix();
               context.transform(m[0], m[1], m[2], m[3], m[4], m[5]);
               this._drawCachedSceneCanvas(context);
-              context.restore();
+              context._context.setTransform(t);
               return this;
           }
           if (!drawFunc) {
@@ -7277,11 +7260,11 @@
               Util.warn('Looks like your canvas has a destroyed shape in it. Do not reuse shape after you destroyed it. If you want to reuse shape you should call remove() instead of destroy()');
           }
           if (cachedHitCanvas) {
-              context.save();
+              const t = context._context.getTransform();
               var m = this.getAbsoluteTransform(top).getMatrix();
               context.transform(m[0], m[1], m[2], m[3], m[4], m[5]);
               this._drawCachedHitCanvas(context);
-              context.restore();
+              context._context.setTransform(t);
               return this;
           }
           if (!drawFunc) {
@@ -7455,7 +7438,7 @@
   /**
    * get/set perfectDrawEnabled. If a shape has fill, stroke and opacity you may set `perfectDrawEnabled` to false to improve performance.
    * See http://konvajs.org/docs/performance/Disable_Perfect_Draw.html for more information.
-   * Default value is true
+   * Default value is false (note WAS true)
    * @name Konva.Shape#perfectDrawEnabled
    * @method
    * @param {Boolean} perfectDrawEnabled
@@ -8361,21 +8344,7 @@
   });
 
   // constants
-  var HASH = '#', BEFORE_DRAW = 'beforeDraw', DRAW = 'draw', 
-  /*
-   * 2 - 3 - 4
-   * |       |
-   * 1 - 0   5
-   *         |
-   * 8 - 7 - 6
-   */
-  INTERSECTION_OFFSETS = [
-      { x: 0, y: 0 },
-      { x: -1, y: -1 },
-      { x: 1, y: -1 },
-      { x: 1, y: 1 },
-      { x: -1, y: 1 }, // 8
-  ], INTERSECTION_OFFSETS_LEN = INTERSECTION_OFFSETS.length;
+  var HASH = '#', BEFORE_DRAW = 'beforeDraw', DRAW = 'draw'; 
   /**
    * Layer constructor.  Layers are tied to their own canvas element and are used
    * to contain groups or shapes.
@@ -8419,12 +8388,14 @@
    */
   class Layer extends Container {
       constructor(config) {
+          var _a;
           super(config);
-          this.canvas = new SceneCanvas();
-          this.hitCanvas = new HitCanvas({
-              pixelRatio: 1,
-          });
           this._waitingForDraw = false;
+          this._batchDrawExecute = undefined;
+          this.canvas = new SceneCanvas({
+              alpha: (_a = config.alpha) !== null && _a !== void 0 ? _a : true,
+          });
+          this.hitCanvas = new HitCanvas();
           this.on('visibleChange.konva', this._checkVisibility);
           this._checkVisibility();
           this.on('imageSmoothingEnabledChange.konva', this._setSmoothEnabled);
@@ -8432,6 +8403,10 @@
           const refresh = this.refresh.bind(this);
           this.on('add', refresh);
           this.on('destroy', refresh);
+          this._batchDrawExecute = (function () {
+              this.draw();
+              this._waitingForDraw = false;
+          }).bind(this);
       }
       // for nodejs?
       createPNGStream() {
@@ -8637,12 +8612,9 @@
        * @return {Konva.Layer} this
        */
       batchDraw() {
-          if (!this._waitingForDraw) {
+          if (this._batchDrawExecute && !this._waitingForDraw) {
               this._waitingForDraw = true;
-              Util.requestAnimFrame(() => {
-                  this.draw();
-                  this._waitingForDraw = false;
-              });
+              Util.requestAnimFrame(this._batchDrawExecute);
           }
           return this;
       }
@@ -8660,40 +8632,13 @@
        * var shape = layer.getIntersection({x: 50, y: 50});
        */
       getIntersection(pos) {
+          var _a;
           if (!this.isListening() || !this.isVisible()) {
               return null;
           }
-          // in some cases antialiased area may be bigger than 1px
-          // it is possible if we will cache node, then scale it a lot
-          var spiralSearchDistance = 1;
-          var continueSearch = false;
-          while (true) {
-              for (let i = 0; i < INTERSECTION_OFFSETS_LEN; i++) {
-                  const intersectionOffset = INTERSECTION_OFFSETS[i];
-                  const obj = this._getIntersection({
-                      x: pos.x + intersectionOffset.x * spiralSearchDistance,
-                      y: pos.y + intersectionOffset.y * spiralSearchDistance,
-                  });
-                  const shape = obj.shape;
-                  if (shape) {
-                      return shape;
-                  }
-                  // we should continue search if we found antialiased pixel
-                  // that means our node somewhere very close
-                  continueSearch = !!obj.antialiased;
-                  // stop search if found empty pixel
-                  if (!obj.antialiased) {
-                      break;
-                  }
-              }
-              // if no shape, and no antialiased pixel, we should end searching
-              if (continueSearch) {
-                  spiralSearchDistance += 1;
-              }
-              else {
-                  return null;
-              }
-          }
+          // disable complex intersection tests
+          const obj = this._getIntersection(pos);
+          return (_a = obj.shape) !== null && _a !== void 0 ? _a : null;
       }
       _getIntersection(pos) {
           const ratio = this.hitCanvas.pixelRatio;
@@ -8792,11 +8737,6 @@
       destroy() {
           Util.releaseCanvas(this.getNativeCanvasElement(), this.getHitCanvas()._canvas);
           return super.destroy();
-      }
-      refresh() {
-          // ensure a re-render + hit refresh
-          this._drawTimer = 0;
-          this._refreshHit = true;
       }
   }
   Layer.prototype.nodeType = 'Layer';
@@ -9127,7 +9067,7 @@
               if (!layerHash.hasOwnProperty(key)) {
                   continue;
               }
-              layerHash[key].batchDraw();
+              layerHash[key]._requestDraw();
           }
       }
       static _animationLoop() {
@@ -16331,7 +16271,6 @@
           // [delta transform] = [new transform] * [old transform inverted]
           const delta = newTr.multiply(oldTr.invert());
           this._nodes.forEach((node) => {
-              var _a;
               // for each node we have the same [delta transform]
               // the equations is
               // [delta transform] * [parent transform] * [old local transform] = [parent transform] * [new local transform]
@@ -16351,12 +16290,10 @@
               node.setAttrs(attrs);
               this._fire('transform', { evt: evt, target: node });
               node._fire('transform', { evt: evt, target: node });
-              (_a = node.getLayer()) === null || _a === void 0 ? void 0 : _a.batchDraw();
           });
           this.rotation(Util._getRotation(newAttrs.rotation));
           this._resetTransformCache();
           this.update();
-          this.getLayer().batchDraw();
       }
       /**
        * force update of Konva.Transformer.
@@ -16373,7 +16310,6 @@
           anchor.setAttrs(attrs);
       }
       update() {
-          var _a;
           var attrs = this._getNodeRect();
           this.rotation(Util._getRotation(attrs.rotation));
           var width = attrs.width;
@@ -16461,7 +16397,6 @@
               x: 0,
               y: 0,
           });
-          (_a = this.getLayer()) === null || _a === void 0 ? void 0 : _a.batchDraw();
       }
       /**
        * determine if transformer is in active transform
