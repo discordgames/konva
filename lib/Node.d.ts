@@ -248,7 +248,7 @@ export declare abstract class Node<Config extends NodeConfig = NodeConfig> {
     removeName(name: any): this;
     setAttr(attr: any, val: any): this;
     _requestDraw(): void;
-    _setAttr(key: any, val: any): void;
+    _setAttr(key: any, val: any): boolean;
     _setComponentAttr(key: any, component: any, val: any): void;
     _fireAndBubble(eventType: any, evt: any, compareShape?: any): void;
     _getProtoListeners(eventType: any): any;

@@ -462,8 +462,11 @@ export class Shape<
     if (!this.getStage()) {
       return false;
     }
+
+    // disable perfect drawing (and use of additional stage buffers)
+
+    const perfectDrawEnabled = false; //this.attrs.perfectDrawEnabled ?? true;
     // force skip buffer canvas
-    const perfectDrawEnabled = this.attrs.perfectDrawEnabled ?? true;
     if (!perfectDrawEnabled) {
       return false;
     }

@@ -39,7 +39,8 @@ export const Konva = {
   _global: glob,
   version: '@@version',
   isBrowser: detectBrowser(),
-  isUnminified: /param/.test(function (param: any) {}.toString()),
+  // disable validation checks on attribute writes
+  isUnminified: false, ///param/.test(function (param: any) {}.toString()),
   dblClickWindow: 400,
   getAngle(angle: number) {
     return Konva.angleDeg ? angle * PI_OVER_180 : angle;
@@ -67,6 +68,17 @@ export const Konva = {
    * Konva.hitOnDragEnabled = true;
    */
   hitOnDragEnabled: false,
+  /**
+   * Should we enable hit detection, by default it is true.
+   * But on some rare cases you want to teporarily disable intersections. Just set it to false.
+   * @property hitTestEnabled
+   * @default false
+   * @name hitTestEnabled
+   * @memberof Konva
+   * @example
+   * Konva.hitTestEnabled = true;
+   */
+  hitTestEnabled: true,
   /**
    * Should we capture touch events and bind them to the touchstart target? That is how it works on DOM elements.
    * The case: we touchstart on div1, then touchmove out of that element into another element div2.
@@ -102,7 +114,8 @@ export const Konva = {
    * // before any Konva code:
    * Konva.pixelRatio = 1;
    */
-  pixelRatio: (typeof window !== 'undefined' && window.devicePixelRatio) || 1,
+  // force this to be globally set by consumer
+  pixelRatio: 1, //(typeof window !== 'undefined' && window.devicePixelRatio) || 1,
 
   /**
    * Drag distance property. If you start to drag a node you may want to wait until pointer is moved to some distance from start point,

@@ -43,7 +43,8 @@ export declare const Util: {
     isObject(val: any): val is Object;
     isValidSelector(selector: any): boolean;
     _sign(number: number): 1 | -1;
-    requestAnimFrame(callback: Function): void;
+    requestAnimFrame(callback: any): void;
+    executeAnimFrame(): void;
     createCanvasElement(): HTMLCanvasElement;
     createImageElement(): HTMLImageElement;
     _isInDocument(el: any): boolean;

@@ -35,10 +35,9 @@ export const Factory = {
         val = validator.call(this, val, attr);
       }
 
-      this._setAttr(attr, val);
-
-      if (after) {
-        after.call(this);
+      const changed = this._setAttr(attr, val);
+      if (changed) {
+        after?.call(this);
       }
 
       return this;
@@ -85,22 +84,24 @@ export const Factory = {
         basicValidator.call(this, val, attr);
       }
 
+      let changed = false;
+
       for (key in val) {
         if (!val.hasOwnProperty(key)) {
           continue;
         }
-        this._setAttr(attr + capitalize(key), val[key]);
+        changed = this._setAttr(attr + capitalize(key), val[key]) || changed;
       }
       if (!val) {
         components.forEach((component) => {
-          this._setAttr(attr + capitalize(component), undefined);
+          changed = this._setAttr(attr + capitalize(component), undefined) || changed;
         });
       }
 
-      this._fireChangeEvent(attr, oldVal, val);
+      if (changed) {
+        this._fireChangeEvent(attr, oldVal, val);
 
-      if (after) {
-        after.call(this);
+        after?.call(this);
       }
 
       return this;

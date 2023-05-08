@@ -14,6 +14,7 @@ export declare class Layer extends Container<Group | Shape> {
     canvas: SceneCanvas;
     hitCanvas: HitCanvas;
     _waitingForDraw: boolean;
+    _executeBatchDraw: () => void;
     constructor(config?: LayerConfig);
     createPNGStream(): any;
     getCanvas(): SceneCanvas;

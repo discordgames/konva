@@ -424,12 +424,13 @@ var OBJECT_ARRAY = '[object Array]',
     yellowgreen: [154, 205, 5],
   },
   RGB_REGEX = /rgb\((\d{1,3}),(\d{1,3}),(\d{1,3})\)/,
-  animQueue: Array<Function> = [];
+  animQueue: Array<Function> = [],
+  animHandle: number = undefined;
 
 const req =
   (typeof requestAnimationFrame !== 'undefined' && requestAnimationFrame) ||
   function (f) {
-    setTimeout(f, 60);
+    return setTimeout(f, 16);
   };
 /**
  * @namespace Util
@@ -492,18 +493,31 @@ export const Util = {
     }
   },
 
-  requestAnimFrame(callback: Function) {
-    animQueue.push(callback);
-    if (animQueue.length === 1) {
-      req(function () {
-        const queue = animQueue;
-        animQueue = [];
-        queue.forEach(function (cb) {
-          cb();
-        });
-      });
-    }
-  },
+  requestAnimFrame(callback) {
+    // ensure we only process unique work
+    for (let i = 0, n = animQueue.length; i < n; ++i) {
+     if (animQueue[i] === callback) {
+         return;
+     }
+   }
+   // push work
+   animQueue.push(callback);
+
+   // bootstrap execution
+   if (!animHandle) {
+       animHandle = req(exports.Util.executeAnimFrame);
+   }
+ },
+
+ executeAnimFrame() {
+     const queue = animQueue;
+     animQueue = [];
+     queue.forEach(function (cb) {
+         cb();
+     });
+
+     animHandle = req(exports.Util.executeAnimFrame);
+ },
   createCanvasElement() {
     var canvas = document.createElement('canvas');
     // on some environments canvas.style is readonly

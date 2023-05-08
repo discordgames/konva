@@ -61,6 +61,7 @@ export class Layer extends Container<Group | Shape> {
   });
 
   _waitingForDraw = false;
+  _executeBatchDraw: () => void = undefined;
 
   constructor(config?: LayerConfig) {
     super(config);
@@ -73,6 +74,13 @@ export class Layer extends Container<Group | Shape> {
     const refresh = this.refresh.bind(this);    
     this.on('add', refresh);
     this.on('destroy', refresh);
+
+    this._executeBatchDraw = 
+      (() => {
+        this.draw();
+        this._waitingForDraw = false;
+      
+    }).bind(this);
   }
   // for nodejs?
   createPNGStream() {
@@ -299,12 +307,9 @@ export class Layer extends Container<Group | Shape> {
    * @return {Konva.Layer} this
    */
   batchDraw() {
-    if (!this._waitingForDraw) {
+    if (!this._waitingForDraw && this._executeBatchDraw) {
       this._waitingForDraw = true;
-      Util.requestAnimFrame(() => {
-        this.draw();
-        this._waitingForDraw = false;
-      });
+      Util.requestAnimFrame(this._executeBatchDraw);
     }
     return this;
   }
@@ -326,6 +331,12 @@ export class Layer extends Container<Group | Shape> {
     if (!this.isListening() || !this.isVisible()) {
       return null;
     }
+
+    // allow only basic intersection test
+
+    const obj = this._getIntersection(pos);
+    return obj?.shape ?? null;
+
     // in some cases antialiased area may be bigger than 1px
     // it is possible if we will cache node, then scale it a lot
     var spiralSearchDistance = 1;

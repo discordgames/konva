@@ -158,8 +158,9 @@ export class Stage extends Container<Layer> {
   _pointerPositions: (Vector2d & { id?: number })[] = [];
   _changedPointerPositions: (Vector2d & { id: number })[] = [];
 
-  bufferCanvas: SceneCanvas;
-  bufferHitCanvas: HitCanvas;
+  bufferCanvas: SceneCanvas = undefined;
+  bufferHitCanvas: HitCanvas = undefined;
+  
   _mouseTargetShape: Shape;
   _touchTargetShape: Shape;
   _pointerTargetShape: Shape;
@@ -231,6 +232,7 @@ export class Stage extends Container<Layer> {
       }
     }
     this._setAttr('container', container);
+    
     if (this.content) {
       if (this.content.parentElement) {
         this.content.parentElement.removeChild(this.content);
@@ -279,7 +281,8 @@ export class Stage extends Container<Layer> {
       stages.splice(index, 1);
     }
 
-    Util.releaseCanvas(this.bufferCanvas._canvas, this.bufferHitCanvas._canvas)
+    this.bufferCanvas && Util.releaseCanvas(this.bufferCanvas._canvas);
+    this.bufferHitCanvas && Util.releaseCanvas(this.bufferHitCanvas._canvas);
 
     return this;
   }
@@ -389,8 +392,8 @@ export class Stage extends Container<Layer> {
       this.content.style.height = height + PX;
     }
 
-    this.bufferCanvas.setSize(width, height);
-    this.bufferHitCanvas.setSize(width, height);
+    this.bufferCanvas?.setSize(width, height);
+    this.bufferHitCanvas?.setSize(width, height);
 
     // set layer dimensions
     this.children.forEach((layer) => {
@@ -884,16 +887,18 @@ export class Stage extends Container<Layer> {
     };
   }
   _buildDOM() {
-    this.bufferCanvas = new SceneCanvas({
-      pixelRatio: 1,
-      width: this.width(),
-      height: this.height(),
-    });
-    this.bufferHitCanvas = new HitCanvas({
-      pixelRatio: 1,
-      width: this.width(),
-      height: this.height(),
-    });
+    // disable stage canvases (only used for shape "perfect drawing" which we also disable)
+    
+    //  this.bufferCanvas = new SceneCanvas({
+       // pixelRatio: 1,
+       // width: this.width(),
+       // height: this.height(),
+    //  });
+    //  this.bufferHitCanvas = new HitCanvas({
+       // pixelRatio: 1,
+       // width: this.width(),
+       // height: this.height(),
+    //  });
 
     if (!Konva.isBrowser) {
       return;

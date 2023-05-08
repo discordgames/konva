@@ -2264,7 +2264,7 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
   _setAttr(key, val) {
     var oldVal = this.attrs[key];
     if (oldVal === val && !Util.isObject(val)) {
-      return;
+      return false;
     }
     if (val === undefined || val === null) {
       delete this.attrs[key];
@@ -2275,6 +2275,7 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
       this._fireChangeEvent(key, oldVal, val);
     }
     this._requestDraw();
+    return true;
   }
   _setComponentAttr(key, component, val) {
     var oldVal;
@@ -2381,7 +2382,7 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
     const elapsedDraw = time - this._drawTimer;
     this._drawAccumulation += elapsedDraw;
     if (this._drawAccumulation >= this._drawRate) {
-      this._drawAccumulation = this._drawAccumulation % this._drawRate;
+      this._drawAccumulation = this._drawRate ? this._drawAccumulation % this._drawRate : 0;
       this.drawScene();
 
       // draw hit

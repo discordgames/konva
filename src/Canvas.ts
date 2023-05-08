@@ -7,6 +7,10 @@ import { getNumberValidator } from './Validators';
 // calculate pixel ratio
 var _pixelRatio;
 function getDevicePixelRatio() {
+  // force globally set pixel ration by client
+
+  return Konva.pixelRatio;
+
   if (_pixelRatio) {
     return _pixelRatio;
   }
@@ -174,7 +178,7 @@ export class SceneCanvas extends Canvas {
   constructor(
     config: ICanvasConfig = {}
   ) {
-    config = { width: 0, height: 0, pixelRatio: 1, willReadFrequently: false, ... config };
+    config = { width: 0, height: 0, pixelRatio: Konva.pixelRatio, willReadFrequently: false, ... config };
     super(config);
     
     this.context = new SceneContext(this, {
