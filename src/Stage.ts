@@ -541,6 +541,7 @@ export class Stage extends Container<Layer> {
     this.setPointersPositions(evt);
 
     var triggeredOnShape = false;
+    if (Konva.hitTestEnabled) {
     this._changedPointerPositions.forEach((pos) => {
       var shape = this.getIntersection(pos);
       DD.justDragged = false;
@@ -573,7 +574,7 @@ export class Stage extends Container<Layer> {
         evt.preventDefault();
       }
     });
-
+  }
     // trigger down on stage if not already
     if (!triggeredOnShape) {
       this._fire(events.pointerdown, {
@@ -602,6 +603,7 @@ export class Stage extends Container<Layer> {
 
     var processedShapesIds = {};
     let triggeredOnShape = false;
+    if (Konva.hitTestEnabled) {
     var targetShape = this._getTargetShape(eventType);
     this._changedPointerPositions.forEach((pos) => {
       const shape = (PointerEvents.getCapturedShape(pos.id) ||
@@ -643,7 +645,7 @@ export class Stage extends Container<Layer> {
         }
       }
     });
-
+  }
     if (!triggeredOnShape) {
       this._fire(events.pointermove, {
         evt: evt,

@@ -2385,7 +2385,7 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
       this.drawScene();
 
       // draw hit
-      if (this._refreshHit === true) {
+      if (this._refreshHit === true && Konva.hitTestEnabled) {
         this.drawHit();
         this._refreshHit = false;
       }
