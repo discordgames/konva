@@ -39,6 +39,7 @@ export declare class Stage extends Container<Layer> {
     clear(): this;
     clone(obj?: any): any;
     destroy(): this;
+    refresh(): void;
     getPointerPosition(): Vector2d | null;
     _getPointerById(id?: number): Vector2d & {
         id?: number;
