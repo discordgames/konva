@@ -766,10 +766,12 @@ CONTEXT_PROPERTIES.forEach(function (prop) {
 });
 
 export class SceneContext extends Context {
-  constructor(canvas: Canvas, { willReadFrequently = false } = {}) {
+  constructor(canvas: Canvas, { willReadFrequently = false, alpha = true, desynchronized = false } = {}) {
     super(canvas);
     this._context = canvas._canvas.getContext('2d', {
       willReadFrequently,
+      alpha,
+      desynchronized,
     }) as CanvasRenderingContext2D;
   }
   _fillColor(shape: Shape) {
@@ -911,10 +913,14 @@ export class SceneContext extends Context {
 }
 
 export class HitContext extends Context {
-  constructor(canvas: Canvas) {
+  constructor(canvas: Canvas, {
+    desynchronized = false
+  } = {}) {
     super(canvas);
     this._context = canvas._canvas.getContext('2d', {
       willReadFrequently: true,
+      alpha: false,
+      desynchronized,
     }) as CanvasRenderingContext2D;
   }
   _fill(shape: Shape) {

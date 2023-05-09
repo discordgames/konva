@@ -2084,10 +2084,12 @@
       });
   });
   class SceneContext extends Context {
-      constructor(canvas, { willReadFrequently = false } = {}) {
+      constructor(canvas, { willReadFrequently = false, alpha = true, desynchronized = false } = {}) {
           super(canvas);
           this._context = canvas._canvas.getContext('2d', {
               willReadFrequently,
+              alpha,
+              desynchronized,
           });
       }
       _fillColor(shape) {
@@ -2204,10 +2206,12 @@
       }
   }
   class HitContext extends Context {
-      constructor(canvas) {
+      constructor(canvas, { desynchronized = false } = {}) {
           super(canvas);
           this._context = canvas._canvas.getContext('2d', {
               willReadFrequently: true,
+              alpha: false,
+              desynchronized: desynchronized,
           });
       }
       _fill(shape) {
@@ -2368,7 +2372,7 @@
   Factory.addGetterSetter(Canvas, 'pixelRatio', undefined, getNumberValidator());
   class SceneCanvas extends Canvas {
       constructor(config = {}) {
-          config = Object.assign({ width: 0, height: 0, pixelRatio: Konva$2.pixelRatio, willReadFrequently: false }, config);
+          config = Object.assign({ width: 0, height: 0, pixelRatio: Konva$2.pixelRatio, willReadFrequently: false, alpha: true, desynchronized: false }, config);
           super(config);
           this.context = new SceneContext(this, {
               willReadFrequently: config.willReadFrequently,
@@ -2378,10 +2382,12 @@
   }
   class HitCanvas extends Canvas {
       constructor(config = {}) {
-          config = Object.assign({ width: 0, height: 0, pixelRatio: 1, willReadFrequently: true }, config);
+          config = Object.assign({ width: 0, height: 0, pixelRatio: 1, willReadFrequently: true, alpha: false, desynchronized: false }, config);
           super(config);
           this.hitCanvas = true;
-          this.context = new HitContext(this);
+          this.context = new HitContext(this, {
+              desynchronized: config.desynchronized
+          });
           this.setSize(config.width, config.height);
       }
   }

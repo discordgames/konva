@@ -66,8 +66,10 @@ type CanvasContextProps = Pick<CanvasRenderingContext2D, typeof CONTEXT_PROPERTI
 export interface Context extends CanvasContextProps {
 }
 export declare class SceneContext extends Context {
-    constructor(canvas: Canvas, { willReadFrequently }?: {
+    constructor(canvas: Canvas, { willReadFrequently, alpha, desynchronized }?: {
         willReadFrequently?: boolean;
+        alpha?: boolean;
+        desynchronized?: boolean;
     });
     _fillColor(shape: Shape): void;
     _fillPattern(shape: Shape): void;
@@ -79,7 +81,9 @@ export declare class SceneContext extends Context {
     _applyShadow(shape: any): void;
 }
 export declare class HitContext extends Context {
-    constructor(canvas: Canvas);
+    constructor(canvas: Canvas, { desynchronized }?: {
+        desynchronized?: boolean;
+    });
     _fill(shape: Shape): void;
     strokeShape(shape: Shape): void;
     _stroke(shape: any): void;

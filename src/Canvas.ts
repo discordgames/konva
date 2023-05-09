@@ -36,6 +36,8 @@ interface ICanvasConfig {
   height?: number;
   pixelRatio?: number;
   willReadFrequently?: boolean;
+  alpha?: boolean;
+  desynchronized?: boolean;
 }
 
 /**
@@ -178,7 +180,8 @@ export class SceneCanvas extends Canvas {
   constructor(
     config: ICanvasConfig = {}
   ) {
-    config = { width: 0, height: 0, pixelRatio: Konva.pixelRatio, willReadFrequently: false, ... config };
+    config = { width: 0, height: 0, pixelRatio: Konva.pixelRatio, willReadFrequently: false, alpha: true,
+      desynchronized: false, ... config };
     super(config);
     
     this.context = new SceneContext(this, {
@@ -191,10 +194,13 @@ export class SceneCanvas extends Canvas {
 export class HitCanvas extends Canvas {
   hitCanvas = true;
   constructor(config: ICanvasConfig = {}) {
-    config = { width: 0, height: 0, pixelRatio: 1, willReadFrequently: true, ... config };
+    config = { width: 0, height: 0, pixelRatio: 1, willReadFrequently: true, alpha: false,
+      desynchronized: false, ... config };
     super(config);
 
-    this.context = new HitContext(this);
+    this.context = new HitContext(this, {
+      desynchronized: config.desynchronized
+    });
     this.setSize(config.width, config.height);
   }
 }
