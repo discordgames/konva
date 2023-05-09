@@ -425,7 +425,7 @@ var OBJECT_ARRAY = '[object Array]',
   },
   RGB_REGEX = /rgb\((\d{1,3}),(\d{1,3}),(\d{1,3})\)/,
   animQueue: Array<Function> = [],
-  animHandle: number | undefined = undefined;
+  animHandle: number = undefined;
 
 const req =
   (typeof requestAnimationFrame !== 'undefined' && requestAnimationFrame) ||
@@ -494,27 +494,30 @@ export const Util = {
   },
 
   requestAnimFrame(callback) {
-     // ensure we only process unique work
-     for (let i = 0, n = animQueue.length; i < n; ++i) {
-      if (animQueue[i] === callback) {
-          return;
-      }
-    }
+    // ensure we only process unique work
+    for (let i = 0, n = animQueue.length; i < n; ++i) {
+     if (animQueue[i] === callback) {
+         return;
+     }
+   }
+   // push work
+   animQueue.push(callback);
 
-    animQueue.push(callback);
-    if (animQueue.length === 1) {
-        req(exports.Util.executeAnimFrame);
-    }
-  },
+   // bootstrap execution
+   if (!animHandle) {
+       animHandle = req(exports.Util.executeAnimFrame);
+   }
+ },
 
-  executeAnimFrame() {
-      const queue = animQueue;
-      animQueue = [];
-      queue.forEach(function (cb) {
-          cb();
-      });
-  },
-  
+ executeAnimFrame() {
+     const queue = animQueue;
+     animQueue = [];
+     queue.forEach(function (cb) {
+         cb();
+     });
+
+     animHandle = req(exports.Util.executeAnimFrame);
+ },
   createCanvasElement() {
     var canvas = document.createElement('canvas');
     // on some environments canvas.style is readonly

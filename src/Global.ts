@@ -40,7 +40,7 @@ export const Konva = {
   version: '@@version',
   isBrowser: detectBrowser(),
   // disable validation checks on attribute writes
-  isUnminified: false, // /param/.test(function (param: any) {}.toString()),
+  isUnminified: false, ///param/.test(function (param: any) {}.toString()),
   dblClickWindow: 400,
   getAngle(angle: number) {
     return Konva.angleDeg ? angle * PI_OVER_180 : angle;
@@ -114,7 +114,8 @@ export const Konva = {
    * // before any Konva code:
    * Konva.pixelRatio = 1;
    */
-  pixelRatio: (typeof window !== 'undefined' && window.devicePixelRatio) || 1,
+  // force this to be globally set by consumer
+  pixelRatio: 1, //(typeof window !== 'undefined' && window.devicePixelRatio) || 1,
 
   /**
    * Drag distance property. If you start to drag a node you may want to wait until pointer is moved to some distance from start point,

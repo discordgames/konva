@@ -8,7 +8,7 @@
    * Konva JavaScript Framework v9.0.1
    * http://konvajs.org/
    * Licensed under the MIT
-   * Date: Thu May 04 2023
+   * Date: Tue May 09 2023
    *
    * Original work Copyright (C) 2011 - 2013 by Eric Rowell (KineticJS)
    * Modified work Copyright (C) 2014 - present by Anton Lavrenov (Konva)
@@ -110,7 +110,8 @@
        * // before any Konva code:
        * Konva.pixelRatio = 1;
        */
-      pixelRatio: (typeof window !== 'undefined' && window.devicePixelRatio) || 1,
+      // force this to be globally set by consumer
+      pixelRatio: 1,
       /**
        * Drag distance property. If you start to drag a node you may want to wait until pointer is moved to some distance from start point,
        * only then start dragging. Default is 3px.
@@ -590,7 +591,7 @@
       whitesmoke: [245, 245, 245],
       yellow: [255, 255, 0],
       yellowgreen: [154, 205, 5],
-  }, RGB_REGEX = /rgb\((\d{1,3}),(\d{1,3}),(\d{1,3})\)/, animQueue = [];
+  }, RGB_REGEX = /rgb\((\d{1,3}),(\d{1,3}),(\d{1,3})\)/, animQueue = [], animHandle = undefined;
   const req = (typeof requestAnimationFrame !== 'undefined' && requestAnimationFrame) ||
       function (f) {
           return setTimeout(f, 16);
@@ -659,9 +660,11 @@
                   return;
               }
           }
+          // push work
           animQueue.push(callback);
-          if (animQueue.length === 1) {
-              req(exports.Util.executeAnimFrame);
+          // bootstrap execution
+          if (!animHandle) {
+              animHandle = req(exports.Util.executeAnimFrame);
           }
       },
       executeAnimFrame() {
@@ -670,6 +673,7 @@
           queue.forEach(function (cb) {
               cb();
           });
+          animHandle = req(exports.Util.executeAnimFrame);
       },
       createCanvasElement() {
           var canvas = document.createElement('canvas');
@@ -1345,8 +1349,10 @@
               if (validator && val !== undefined && val !== null) {
                   val = validator.call(this, val, attr);
               }
-              // call 'after' only if set sttribute produces a change
-              this._setAttr(attr, val) && (after === null || after === void 0 ? void 0 : after.call(this));
+              const changed = this._setAttr(attr, val);
+              if (changed) {
+                  after === null || after === void 0 ? void 0 : after.call(this);
+              }
               return this;
           };
       },
@@ -1376,11 +1382,11 @@
                   if (!val.hasOwnProperty(key)) {
                       continue;
                   }
-                  changed = changed || this._setAttr(attr + capitalize(key), val[key]);
+                  changed = this._setAttr(attr + capitalize(key), val[key]) || changed;
               }
               if (!val) {
                   components.forEach((component) => {
-                      changed = changed || this._setAttr(attr + capitalize(component), undefined);
+                      changed = this._setAttr(attr + capitalize(component), undefined) || changed;
                   });
               }
               if (changed) {
@@ -2082,8 +2088,8 @@
           super(canvas);
           this._context = canvas._canvas.getContext('2d', {
               willReadFrequently,
-              desynchronized,
               alpha,
+              desynchronized,
           });
       }
       _fillColor(shape) {
@@ -2200,7 +2206,7 @@
       }
   }
   class HitContext extends Context {
-      constructor(canvas, { desynchronized = false }) {
+      constructor(canvas, { desynchronized = false } = {}) {
           super(canvas);
           this._context = canvas._canvas.getContext('2d', {
               willReadFrequently: true,
@@ -2242,7 +2248,7 @@
   }
 
   function getDevicePixelRatio() {
-      // do not bother with detecting pixel ratio
+      // force globally set pixel ration by client
       return Konva$2.pixelRatio;
   }
   /**
@@ -2370,15 +2376,13 @@
           super(config);
           this.context = new SceneContext(this, {
               willReadFrequently: config.willReadFrequently,
-              alpha: config.alpha,
-              desynchronized: config.desynchronized,
           });
           this.setSize(config.width, config.height);
       }
   }
   class HitCanvas extends Canvas {
       constructor(config = {}) {
-          config = Object.assign({ width: 0, height: 0, pixelRatio: Konva$2.pixelRatio, willReadFrequently: true, alpha: false, desynchronized: false }, config);
+          config = Object.assign({ width: 0, height: 0, pixelRatio: 1, willReadFrequently: true, alpha: false, desynchronized: false }, config);
           super(config);
           this.hitCanvas = true;
           this.context = new HitContext(this, {
@@ -2582,6 +2586,12 @@
           this._drawRate = (_a = config === null || config === void 0 ? void 0 : config.drawRate) !== null && _a !== void 0 ? _a : this._drawRate;
           // all change event listeners are attached to the prototype
       }
+      refresh(render = true) {
+          this._drawTimer = 0;
+          this._drawAccumulation = 0;
+          this._refreshHit = true;
+          render && this._requestDraw();
+      }
       hasChildren() {
           return false;
       }
@@ -2656,7 +2666,7 @@
               this._cache.delete(CANVAS);
           }
           this._clearSelfAndDescendantCache();
-          //this.refresh();
+          this.refresh();
           return this;
       }
       /**
@@ -2872,7 +2882,6 @@
           };
       }
       _drawCachedSceneCanvas(context) {
-          context.save();
           context._applyOpacity(this);
           context._applyGlobalCompositeOperation(this);
           const canvasCache = this._getCanvasCache();
@@ -2880,14 +2889,13 @@
           var cacheCanvas = this._getCachedSceneCanvas();
           var ratio = cacheCanvas.pixelRatio;
           context.drawImage(cacheCanvas._canvas, 0, 0, cacheCanvas.width / ratio, cacheCanvas.height / ratio);
-          context.restore();
+          context.translate(-canvasCache.x, -canvasCache.y);
       }
       _drawCachedHitCanvas(context) {
           var canvasCache = this._getCanvasCache(), hitCanvas = canvasCache.hit;
-          context.save();
           context.translate(canvasCache.x, canvasCache.y);
           context.drawImage(hitCanvas._canvas, 0, 0, hitCanvas.width / hitCanvas.pixelRatio, hitCanvas.height / hitCanvas.pixelRatio);
-          context.restore();
+          context.translate(-canvasCache.x, -canvasCache.y);
       }
       _getCachedSceneCanvas() {
           var filters = this.filters(), cachedCanvas = this._getCanvasCache(), sceneCanvas = cachedCanvas.scene, filterCanvas = cachedCanvas.filter, filterContext = filterCanvas.getContext(), len, imageData, n, filter;
@@ -3143,13 +3151,6 @@
           this.remove();
           this.clearCache();
           return this;
-      }
-      refresh() {
-          // ensure a re-render + hit refresh
-          this._drawTimer = 0;
-          this._drawAccumulation = 0;
-          this._refreshHit = true;
-          this._requestDraw();
       }
       /**
        * get attr
@@ -4430,7 +4431,7 @@
           if (this._shouldFireChangeEvents) {
               this._fireChangeEvent(key, oldVal, val);
           }
-          //this.refresh();
+          this.refresh();
           return true;
       }
       _setComponentAttr(key, component, val) {
@@ -4597,7 +4598,7 @@
               this._lastPos.x !== newNodePos.x ||
               this._lastPos.y !== newNodePos.y) {
               this.setAbsolutePosition(newNodePos);
-              //this.refresh();
+              this.refresh();
           }
           this._lastPos = newNodePos;
       }
@@ -4775,10 +4776,9 @@
       this._clearSelfAndDescendantCache(ABSOLUTE_OPACITY);
   });
   const addGetterSetter = Factory.addGetterSetter;
-  // utility to ensure layer refreshes on stage transform updates
+  // utility to ensure node is refreshed on attribute updates
   function refresh() {
-      const drawNode = this.getLayer() || this.getStage();
-      drawNode === null || drawNode === void 0 ? void 0 : drawNode.refresh();
+      this.refresh();
   }
   /**
    * get/set zIndex relative to the node's siblings who share the same parent.
@@ -5657,7 +5657,8 @@
           var _a;
           var context = canvas && canvas.getContext(), clipWidth = this.clipWidth(), clipHeight = this.clipHeight(), clipFunc = this.clipFunc(), hasClip = (clipWidth && clipHeight) || clipFunc;
           const selfCache = top === this;
-          if (hasClip) {
+          // do not apply clip when generating hit buffer
+          if (hasClip && (drawMethod !== 'drawHit' || this.clipEnableForHit())) {
               context.save();
               var transform = this.getAbsoluteTransform(top);
               var m = transform.getMatrix();
@@ -5765,7 +5766,7 @@
           return selfRect;
       }
   }
-  // add getters setters
+  Factory.addGetterSetter(Container, 'clipEnableForHit', true, getBooleanValidator());
   Factory.addComponentsGetterSetter(Container, 'clip', [
       'x',
       'y',
@@ -6031,6 +6032,8 @@
           super(checkNoClip(config));
           this._pointerPositions = [];
           this._changedPointerPositions = [];
+          this.bufferCanvas = undefined;
+          this.bufferHitCanvas = undefined;
           this._buildDOM();
           this._bindContentEvents();
           stages.push(this);
@@ -6040,6 +6043,11 @@
               checkNoClip(this.attrs);
           });
           this._checkVisibility();
+      }
+      refresh(render = true) {
+          var _a;
+          (_a = this.getLayers()) === null || _a === void 0 ? void 0 : _a.forEach((layer) => layer.refresh(false));
+          super.refresh(render);
       }
       _validateAdd(child) {
           const isLayer = child.getType() === 'Layer';
@@ -6125,19 +6133,8 @@
               stages.splice(index, 1);
           }
           this.bufferCanvas && Util.releaseCanvas(this.bufferCanvas._canvas);
-          this.bufferCanvas = undefined;
           this.bufferHitCanvas && Util.releaseCanvas(this.bufferHitCanvas._canvas);
-          this.bufferHitCanvas = undefined;
           return this;
-      }
-      refresh() {
-          var _a;
-          (_a = this.getLayers()) === null || _a === void 0 ? void 0 : _a.forEach((layer) => {
-              layer._drawTimer = 0;
-              layer._drawAccumulation = 0;
-              layer._refreshHit = true;
-          });
-          super.refresh();
       }
       /**
        * returns ABSOLUTE pointer position which can be a touch position or mouse position
@@ -6668,17 +6665,17 @@
           };
       }
       _buildDOM() {
-          // we disable 'perfectDrawing' so these buffers are unnecessary
-          // this.bufferCanvas = new SceneCanvas({
-          //   pixelRatio: 1,
-          //   width: this.width(),
-          //   height: this.height(),
-          // });
-          // this.bufferHitCanvas = new HitCanvas({
-          //   pixelRatio: 1,
-          //   width: this.width(),
-          //   height: this.height(),
-          // });
+          // disable stage canvases (only used for shape "perfect drawing" which we also disable)
+          //  this.bufferCanvas = new SceneCanvas({
+          // pixelRatio: 1,
+          // width: this.width(),
+          // height: this.height(),
+          //  });
+          //  this.bufferHitCanvas = new HitCanvas({
+          // pixelRatio: 1,
+          // width: this.width(),
+          // height: this.height(),
+          //  });
           if (!Konva$2.isBrowser) {
               return;
           }
@@ -7098,28 +7095,14 @@
           // image and sprite still has "fill" as image
           // so they use that method with forced fill
           // it probably will be simpler, then copy/paste the code
-          var _a;
           // buffer canvas is available only inside the stage
-          if (!this.getStage() || !this.getStage().bufferCanvas) {
+          if (!this.getStage()) {
               return false;
           }
-          // force skip buffer canvas  (assume no perfect drawing by default)
-          const perfectDrawEnabled = (_a = this.attrs.perfectDrawEnabled) !== null && _a !== void 0 ? _a : false;
-          if (!perfectDrawEnabled) {
+          // force skip buffer canvas
+          {
               return false;
           }
-          const hasFill = forceFill || this.hasFill();
-          const hasStroke = this.hasStroke();
-          const isTransparent = this.getAbsoluteOpacity() !== 1;
-          if (hasFill && hasStroke && isTransparent) {
-              return true;
-          }
-          const hasShadow = this.hasShadow();
-          const strokeForShadow = this.shadowForStrokeEnabled();
-          if (hasFill && hasStroke && hasShadow && strokeForShadow) {
-              return true;
-          }
-          return false;
       }
       setStrokeHitEnabled(val) {
           Util.warn('strokeHitEnabled property is deprecated. Please use hitStrokeWidth instead.');
@@ -7438,7 +7421,7 @@
   /**
    * get/set perfectDrawEnabled. If a shape has fill, stroke and opacity you may set `perfectDrawEnabled` to false to improve performance.
    * See http://konvajs.org/docs/performance/Disable_Perfect_Draw.html for more information.
-   * Default value is false (note WAS true)
+   * Default value is true
    * @name Konva.Shape#perfectDrawEnabled
    * @method
    * @param {Boolean} perfectDrawEnabled
@@ -8388,14 +8371,13 @@
    */
   class Layer extends Container {
       constructor(config) {
-          var _a;
           super(config);
-          this._waitingForDraw = false;
-          this._batchDrawExecute = undefined;
-          this.canvas = new SceneCanvas({
-              alpha: (_a = config.alpha) !== null && _a !== void 0 ? _a : true,
+          this.canvas = new SceneCanvas();
+          this.hitCanvas = new HitCanvas({
+              pixelRatio: 1,
           });
-          this.hitCanvas = new HitCanvas();
+          this._waitingForDraw = false;
+          this._executeBatchDraw = undefined;
           this.on('visibleChange.konva', this._checkVisibility);
           this._checkVisibility();
           this.on('imageSmoothingEnabledChange.konva', this._setSmoothEnabled);
@@ -8403,10 +8385,11 @@
           const refresh = this.refresh.bind(this);
           this.on('add', refresh);
           this.on('destroy', refresh);
-          this._batchDrawExecute = (function () {
-              this.draw();
-              this._waitingForDraw = false;
-          }).bind(this);
+          this._executeBatchDraw =
+              (() => {
+                  this.draw();
+                  this._waitingForDraw = false;
+              }).bind(this);
       }
       // for nodejs?
       createPNGStream() {
@@ -8612,9 +8595,9 @@
        * @return {Konva.Layer} this
        */
       batchDraw() {
-          if (this._batchDrawExecute && !this._waitingForDraw) {
+          if (!this._waitingForDraw && this._executeBatchDraw) {
               this._waitingForDraw = true;
-              Util.requestAnimFrame(this._batchDrawExecute);
+              Util.requestAnimFrame(this._executeBatchDraw);
           }
           return this;
       }
@@ -8636,9 +8619,9 @@
           if (!this.isListening() || !this.isVisible()) {
               return null;
           }
-          // disable complex intersection tests
+          // allow only basic intersection test
           const obj = this._getIntersection(pos);
-          return (_a = obj.shape) !== null && _a !== void 0 ? _a : null;
+          return (_a = obj === null || obj === void 0 ? void 0 : obj.shape) !== null && _a !== void 0 ? _a : null;
       }
       _getIntersection(pos) {
           const ratio = this.hitCanvas.pixelRatio;
@@ -9067,7 +9050,7 @@
               if (!layerHash.hasOwnProperty(key)) {
                   continue;
               }
-              layerHash[key]._requestDraw();
+              layerHash[key].batchDraw();
           }
       }
       static _animationLoop() {
@@ -12422,12 +12405,14 @@
       _sceneFunc(context) {
           var rx = this.radiusX(), ry = this.radiusY();
           context.beginPath();
-          context.save();
           if (rx !== ry) {
               context.scale(1, ry / rx);
+              context.arc(0, 0, rx, 0, Math.PI * 2, false);
+              context.scale(1, rx / ry);
           }
-          context.arc(0, 0, rx, 0, Math.PI * 2, false);
-          context.restore();
+          else {
+              context.arc(0, 0, rx, 0, Math.PI * 2, false);
+          }
           context.closePath();
           context.fillStrokeShape(this);
       }
@@ -12612,7 +12597,7 @@
           }
           if (image && image['addEventListener']) {
               image['addEventListener']('load', () => {
-                  this._requestDraw();
+                  this.refresh();
               });
           }
       }
@@ -16271,6 +16256,7 @@
           // [delta transform] = [new transform] * [old transform inverted]
           const delta = newTr.multiply(oldTr.invert());
           this._nodes.forEach((node) => {
+              var _a;
               // for each node we have the same [delta transform]
               // the equations is
               // [delta transform] * [parent transform] * [old local transform] = [parent transform] * [new local transform]
@@ -16290,6 +16276,7 @@
               node.setAttrs(attrs);
               this._fire('transform', { evt: evt, target: node });
               node._fire('transform', { evt: evt, target: node });
+              (_a = node.getLayer()) === null || _a === void 0 ? void 0 : _a.refresh();
           });
           this.rotation(Util._getRotation(newAttrs.rotation));
           this._resetTransformCache();
@@ -16310,6 +16297,7 @@
           anchor.setAttrs(attrs);
       }
       update() {
+          var _a;
           var attrs = this._getNodeRect();
           this.rotation(Util._getRotation(attrs.rotation));
           var width = attrs.width;
@@ -16397,6 +16385,7 @@
               x: 0,
               y: 0,
           });
+          (_a = this.getLayer()) === null || _a === void 0 ? void 0 : _a.refresh();
       }
       /**
        * determine if transformer is in active transform

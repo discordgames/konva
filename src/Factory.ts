@@ -35,8 +35,10 @@ export const Factory = {
         val = validator.call(this, val, attr);
       }
 
-      // call 'after' only if set sttribute produces a change
-      this._setAttr(attr, val) && after?.call(this);
+      const changed = this._setAttr(attr, val);
+      if (changed) {
+        after?.call(this);
+      }
 
       return this;
     };
@@ -83,21 +85,22 @@ export const Factory = {
       }
 
       let changed = false;
-      
+
       for (key in val) {
         if (!val.hasOwnProperty(key)) {
           continue;
         }
-        changed = changed || this._setAttr(attr + capitalize(key), val[key]);
+        changed = this._setAttr(attr + capitalize(key), val[key]) || changed;
       }
       if (!val) {
         components.forEach((component) => {
-          changed = changed || this._setAttr(attr + capitalize(component), undefined);
+          changed = this._setAttr(attr + capitalize(component), undefined) || changed;
         });
       }
 
       if (changed) {
         this._fireChangeEvent(attr, oldVal, val);
+
         after?.call(this);
       }
 

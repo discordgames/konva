@@ -770,8 +770,8 @@ export class SceneContext extends Context {
     super(canvas);
     this._context = canvas._canvas.getContext('2d', {
       willReadFrequently,
-      desynchronized,
       alpha,
+      desynchronized,
     }) as CanvasRenderingContext2D;
   }
   _fillColor(shape: Shape) {
@@ -913,7 +913,9 @@ export class SceneContext extends Context {
 }
 
 export class HitContext extends Context {
-  constructor(canvas: Canvas, {desynchronized = false}) {
+  constructor(canvas: Canvas, {
+    desynchronized = false
+  } = {}) {
     super(canvas);
     this._context = canvas._canvas.getContext('2d', {
       willReadFrequently: true,

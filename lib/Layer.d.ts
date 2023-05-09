@@ -11,10 +11,10 @@ export interface LayerConfig extends ContainerConfig {
     imageSmoothingEnabled?: boolean;
 }
 export declare class Layer extends Container<Group | Shape> {
-    _waitingForDraw: boolean;
-    _batchDrawExecute: () => void | undefined;
     canvas: SceneCanvas;
     hitCanvas: HitCanvas;
+    _waitingForDraw: boolean;
+    _executeBatchDraw: () => void;
     constructor(config?: LayerConfig);
     createPNGStream(): any;
     getCanvas(): SceneCanvas;

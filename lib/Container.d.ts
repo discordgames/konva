@@ -9,6 +9,7 @@ export interface ContainerConfig extends NodeConfig {
     clipY?: number;
     clipWidth?: number;
     clipHeight?: number;
+    clipEnableForHit?: boolean;
 }
 export declare abstract class Container<ChildType extends Node = Node> extends Node<ContainerConfig> {
     children: Array<ChildType> | undefined;
@@ -38,6 +39,7 @@ export declare abstract class Container<ChildType extends Node = Node> extends N
         skipStroke?: boolean;
         relativeTo?: Container<Node>;
     }): IRect;
+    clipEnableForHit: GetSet<boolean, this>;
     clip: GetSet<IRect, this>;
     clipX: GetSet<number, this>;
     clipY: GetSet<number, this>;

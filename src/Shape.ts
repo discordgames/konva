@@ -459,11 +459,14 @@ export class Shape<
     // it probably will be simpler, then copy/paste the code
 
     // buffer canvas is available only inside the stage
-    if (!this.getStage() || !this.getStage().bufferCanvas) {
+    if (!this.getStage()) {
       return false;
     }
-    // force skip buffer canvas  (assume no perfect drawing by default)
-    const perfectDrawEnabled = this.attrs.perfectDrawEnabled ?? false;
+
+    // disable perfect drawing (and use of additional stage buffers)
+
+    const perfectDrawEnabled = false; //this.attrs.perfectDrawEnabled ?? true;
+    // force skip buffer canvas
     if (!perfectDrawEnabled) {
       return false;
     }
@@ -983,7 +986,7 @@ Factory.addGetterSetter(
 /**
  * get/set perfectDrawEnabled. If a shape has fill, stroke and opacity you may set `perfectDrawEnabled` to false to improve performance.
  * See http://konvajs.org/docs/performance/Disable_Perfect_Draw.html for more information.
- * Default value is false (note WAS true)
+ * Default value is true
  * @name Konva.Shape#perfectDrawEnabled
  * @method
  * @param {Boolean} perfectDrawEnabled

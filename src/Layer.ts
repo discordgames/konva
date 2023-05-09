@@ -55,21 +55,16 @@ var HASH = '#',
  */
 
 export class Layer extends Container<Group | Shape> {
-  _waitingForDraw = false;
-  _batchDrawExecute: () => void | undefined = undefined;
+  canvas = new SceneCanvas();
+  hitCanvas = new HitCanvas({
+    pixelRatio: 1,
+  });
 
-  canvas: SceneCanvas;
-  hitCanvas: HitCanvas;
-  
+  _waitingForDraw = false;
+  _executeBatchDraw: () => void = undefined;
 
   constructor(config?: LayerConfig) {
     super(config);
-
-    this.canvas = new SceneCanvas({
-      alpha: config.alpha ?? true,
-    });
-    this.hitCanvas = new HitCanvas();
-
     this.on('visibleChange.konva', this._checkVisibility);
     this._checkVisibility();
 
@@ -80,9 +75,11 @@ export class Layer extends Container<Group | Shape> {
     this.on('add', refresh);
     this.on('destroy', refresh);
 
-    this._batchDrawExecute = (function () {
-      this.draw();
-      this._waitingForDraw = false;
+    this._executeBatchDraw = 
+      (() => {
+        this.draw();
+        this._waitingForDraw = false;
+      
     }).bind(this);
   }
   // for nodejs?
@@ -310,9 +307,9 @@ export class Layer extends Container<Group | Shape> {
    * @return {Konva.Layer} this
    */
   batchDraw() {
-    if (this._batchDrawExecute && !this._waitingForDraw) {
+    if (!this._waitingForDraw && this._executeBatchDraw) {
       this._waitingForDraw = true;
-      Util.requestAnimFrame(this._batchDrawExecute);
+      Util.requestAnimFrame(this._executeBatchDraw);
     }
     return this;
   }
@@ -330,17 +327,15 @@ export class Layer extends Container<Group | Shape> {
    * @example
    * var shape = layer.getIntersection({x: 50, y: 50});
    */
-  
   getIntersection(pos: Vector2d) {
     if (!this.isListening() || !this.isVisible()) {
       return null;
     }
 
-    // disable complex intersection tests
+    // allow only basic intersection test
 
     const obj = this._getIntersection(pos);
-    return obj.shape ?? null;
-
+    return obj?.shape ?? null;
 
     // in some cases antialiased area may be bigger than 1px
     // it is possible if we will cache node, then scale it a lot
@@ -492,13 +487,6 @@ export class Layer extends Container<Group | Shape> {
     Util.releaseCanvas(this.getNativeCanvasElement(), this.getHitCanvas()._canvas);
     return super.destroy();
   }
-
-  // refresh() {
-  //   // ensure a re-render + hit refresh
-  //   this._drawTimer = 0;
-  //   this._drawAccumulation = 0;
-  //   this._refreshHit = true;
-  // }
 
   hitGraphEnabled: GetSet<boolean, this>;
 

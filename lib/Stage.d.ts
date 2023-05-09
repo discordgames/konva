@@ -31,6 +31,7 @@ export declare class Stage extends Container<Layer> {
     _touchDblTimeout: any;
     _pointerDblTimeout: any;
     constructor(config: StageConfig);
+    refresh(render?: boolean): void;
     _validateAdd(child: any): void;
     _checkVisibility(): void;
     setContainer(container: any): this;
@@ -38,7 +39,6 @@ export declare class Stage extends Container<Layer> {
     clear(): this;
     clone(obj?: any): any;
     destroy(): this;
-    refresh(): void;
     getPointerPosition(): Vector2d | null;
     _getPointerById(id?: number): Vector2d & {
         id?: number;

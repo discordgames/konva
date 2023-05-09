@@ -81,7 +81,7 @@ export declare class SceneContext extends Context {
     _applyShadow(shape: any): void;
 }
 export declare class HitContext extends Context {
-    constructor(canvas: Canvas, { desynchronized }: {
+    constructor(canvas: Canvas, { desynchronized }?: {
         desynchronized?: boolean;
     });
     _fill(shape: Shape): void;

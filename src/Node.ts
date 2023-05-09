@@ -73,7 +73,6 @@ export interface NodeConfig {
   globalCompositeOperation?: globalCompositeOperationType;
   filters?: Array<Filter>;
   drawRate?: number;
-  alpha?: boolean;
 }
 
 // CONSTANTS
@@ -182,6 +181,14 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
     // all change event listeners are attached to the prototype
   }
 
+  refresh(render: boolean = true) {
+    this._drawTimer = 0;
+    this._drawAccumulation = 0;
+    this._refreshHit = true;
+
+    render && this._requestDraw();
+  }
+
   hasChildren() {
     return false;
   }
@@ -263,7 +270,7 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
     }
 
     this._clearSelfAndDescendantCache();
-    //this.refresh();
+    this.refresh();
     return this;
   }
   /**
@@ -532,7 +539,6 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
     };
   }
   _drawCachedSceneCanvas(context: Context) {
-    context.save();
     context._applyOpacity(this);
     context._applyGlobalCompositeOperation(this);
 
@@ -549,12 +555,11 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
       cacheCanvas.width / ratio,
       cacheCanvas.height / ratio
     );
-    context.restore();
+    context.translate(-canvasCache.x, -canvasCache.y);
   }
   _drawCachedHitCanvas(context: Context) {
     var canvasCache = this._getCanvasCache(),
       hitCanvas = canvasCache.hit;
-    context.save();
     context.translate(canvasCache.x, canvasCache.y);
     context.drawImage(
       hitCanvas._canvas,
@@ -563,7 +568,7 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
       hitCanvas.width / hitCanvas.pixelRatio,
       hitCanvas.height / hitCanvas.pixelRatio
     );
-    context.restore();
+    context.translate(-canvasCache.x, -canvasCache.y);
   }
   _getCachedSceneCanvas() {
     var filters = this.filters(),
@@ -874,15 +879,6 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
     this.remove();
     this.clearCache();
     return this;
-  }
-
-  refresh() {
-    // ensure a re-render + hit refresh
-    this._drawTimer = 0;
-    this._drawAccumulation = 0;
-    this._refreshHit = true;
-
-    this._requestDraw();
   }
   /**
    * get attr
@@ -1935,6 +1931,7 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
     if (config.imageSmoothingEnabled === false) {
       context._context.imageSmoothingEnabled = false;
     }
+    
     context.save();
 
     if (x || y) {
@@ -2284,7 +2281,7 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
     if (this._shouldFireChangeEvents) {
       this._fireChangeEvent(key, oldVal, val);
     }
-    //this.refresh();
+    this.refresh();
     return true;
   }
   _setComponentAttr(key, component, val) {
@@ -2481,7 +2478,7 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
       this._lastPos.y !== newNodePos.y
     ) {
       this.setAbsolutePosition(newNodePos);
-      //this.refresh();
+      this.refresh();
     }
 
     this._lastPos = newNodePos;
@@ -2761,10 +2758,9 @@ Node.prototype.on.call(Node.prototype, 'opacityChange.konva', function () {
 
 const addGetterSetter = Factory.addGetterSetter;
 
-// utility to ensure layer refreshes on stage transform updates
+// utility to ensure node is refreshed on attribute updates
 function refresh() {
-  const drawNode = this.getLayer() || this.getStage();
-  drawNode?.refresh();
+  this.refresh();
 }
 
 /**

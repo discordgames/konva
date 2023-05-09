@@ -1100,6 +1100,7 @@ export class Transformer extends Group {
       node.setAttrs(attrs);
       this._fire('transform', { evt: evt, target: node });
       node._fire('transform', { evt: evt, target: node });
+      node.getLayer()?.refresh();
     });
     this.rotation(Util._getRotation(newAttrs.rotation));
     this._resetTransformCache();
@@ -1214,6 +1215,8 @@ export class Transformer extends Group {
       x: 0,
       y: 0,
     });
+
+    this.getLayer()?.refresh();
   }
   /**
    * determine if transformer is in active transform
