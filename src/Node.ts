@@ -181,6 +181,14 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
     // all change event listeners are attached to the prototype
   }
 
+  refresh(render: boolean = true) {
+    this._drawTimer = 0;
+    this._drawAccumulation = 0;
+    this._refreshHit = true;
+
+    render && this._requestDraw();
+  }
+
   hasChildren() {
     return false;
   }
@@ -262,7 +270,7 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
     }
 
     this._clearSelfAndDescendantCache();
-    this._requestDraw();
+    this.refresh();
     return this;
   }
   /**
@@ -440,7 +448,7 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
       y: y,
     });
 
-    this._requestDraw();
+    this.refresh();
 
     return this;
   }
@@ -2273,7 +2281,7 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
     if (this._shouldFireChangeEvents) {
       this._fireChangeEvent(key, oldVal, val);
     }
-    this._requestDraw();
+    this.refresh();
     return true;
   }
   _setComponentAttr(key, component, val) {
@@ -2470,7 +2478,7 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
       this._lastPos.y !== newNodePos.y
     ) {
       this.setAbsolutePosition(newNodePos);
-      this._requestDraw();
+      this.refresh();
     }
 
     this._lastPos = newNodePos;
@@ -2750,17 +2758,9 @@ Node.prototype.on.call(Node.prototype, 'opacityChange.konva', function () {
 
 const addGetterSetter = Factory.addGetterSetter;
 
-// utility to ensure layer refreshes on stage transform updates
+// utility to ensure node is refreshed on attribute updates
 function refresh() {
-  if (this.nodeType === 'Shape') {
-    const shape = this as Shape;
-    shape.getLayer()?.refresh();
-  } else if (this.nodeType === 'Stage') {
-    const stage = this as Stage;
-    stage.getLayers()?.forEach((layer) => {
-      layer.refresh();
-    });
-  }
+  this.refresh();
 }
 
 /**

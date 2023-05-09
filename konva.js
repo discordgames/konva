@@ -8,7 +8,7 @@
    * Konva JavaScript Framework v9.0.1
    * http://konvajs.org/
    * Licensed under the MIT
-   * Date: Mon May 08 2023
+   * Date: Tue May 09 2023
    *
    * Original work Copyright (C) 2011 - 2013 by Eric Rowell (KineticJS)
    * Modified work Copyright (C) 2014 - present by Anton Lavrenov (Konva)
@@ -2586,6 +2586,12 @@
           this._drawRate = (_a = config === null || config === void 0 ? void 0 : config.drawRate) !== null && _a !== void 0 ? _a : this._drawRate;
           // all change event listeners are attached to the prototype
       }
+      refresh(render = true) {
+          this._drawTimer = 0;
+          this._drawAccumulation = 0;
+          this._refreshHit = true;
+          render && this._requestDraw();
+      }
       hasChildren() {
           return false;
       }
@@ -2660,7 +2666,7 @@
               this._cache.delete(CANVAS);
           }
           this._clearSelfAndDescendantCache();
-          this._requestDraw();
+          this.refresh();
           return this;
       }
       /**
@@ -2795,7 +2801,7 @@
               x: x,
               y: y,
           });
-          this._requestDraw();
+          this.refresh();
           return this;
       }
       /**
@@ -4425,7 +4431,7 @@
           if (this._shouldFireChangeEvents) {
               this._fireChangeEvent(key, oldVal, val);
           }
-          this._requestDraw();
+          this.refresh();
           return true;
       }
       _setComponentAttr(key, component, val) {
@@ -4592,7 +4598,7 @@
               this._lastPos.x !== newNodePos.x ||
               this._lastPos.y !== newNodePos.y) {
               this.setAbsolutePosition(newNodePos);
-              this._requestDraw();
+              this.refresh();
           }
           this._lastPos = newNodePos;
       }
@@ -4770,19 +4776,9 @@
       this._clearSelfAndDescendantCache(ABSOLUTE_OPACITY);
   });
   const addGetterSetter = Factory.addGetterSetter;
-  // utility to ensure layer refreshes on stage transform updates
+  // utility to ensure node is refreshed on attribute updates
   function refresh() {
-      var _a, _b;
-      if (this.nodeType === 'Shape') {
-          const shape = this;
-          (_a = shape.getLayer()) === null || _a === void 0 ? void 0 : _a.refresh();
-      }
-      else if (this.nodeType === 'Stage') {
-          const stage = this;
-          (_b = stage.getLayers()) === null || _b === void 0 ? void 0 : _b.forEach((layer) => {
-              layer.refresh();
-          });
-      }
+      this.refresh();
   }
   /**
    * get/set zIndex relative to the node's siblings who share the same parent.
@@ -5381,7 +5377,7 @@
           });
           this.children = [];
           // because all children were detached from parent, request draw via container
-          this._requestDraw();
+          this.refresh();
           return this;
       }
       /**
@@ -5398,7 +5394,7 @@
           });
           this.children = [];
           // because all children were detached from parent, request draw via container
-          this._requestDraw();
+          this.refresh();
           return this;
       }
       /**
@@ -5438,7 +5434,7 @@
           this._fire('add', {
               child: child,
           });
-          this._requestDraw();
+          this.refresh();
           // chainable
           return this;
       }
@@ -5620,7 +5616,7 @@
           (_a = this.children) === null || _a === void 0 ? void 0 : _a.forEach(function (child, n) {
               child.index = n;
           });
-          this._requestDraw();
+          this.refresh();
       }
       drawScene(can, top) {
           var layer = this.getLayer(), canvas = can || (layer && layer.getCanvas()), context = canvas && canvas.getContext(), cachedCanvas = this._getCanvasCache(), cachedSceneCanvas = cachedCanvas && cachedCanvas.scene;
@@ -6047,6 +6043,11 @@
               checkNoClip(this.attrs);
           });
           this._checkVisibility();
+      }
+      refresh(render = true) {
+          var _a;
+          (_a = this.getLayers()) === null || _a === void 0 ? void 0 : _a.forEach((layer) => layer.refresh(false));
+          super.refresh(render);
       }
       _validateAdd(child) {
           const isLayer = child.getType() === 'Layer';
@@ -8719,11 +8720,6 @@
       destroy() {
           Util.releaseCanvas(this.getNativeCanvasElement(), this.getHitCanvas()._canvas);
           return super.destroy();
-      }
-      refresh() {
-          // ensure a re-render + hit refresh
-          this._drawTimer = 0;
-          this._refreshHit = true;
       }
   }
   Layer.prototype.nodeType = 'Layer';
@@ -12601,7 +12597,7 @@
           }
           if (image && image['addEventListener']) {
               image['addEventListener']('load', () => {
-                  this._requestDraw();
+                  this.refresh();
               });
           }
       }
@@ -16280,12 +16276,11 @@
               node.setAttrs(attrs);
               this._fire('transform', { evt: evt, target: node });
               node._fire('transform', { evt: evt, target: node });
-              (_a = node.getLayer()) === null || _a === void 0 ? void 0 : _a.batchDraw();
+              (_a = node.getLayer()) === null || _a === void 0 ? void 0 : _a.refresh();
           });
           this.rotation(Util._getRotation(newAttrs.rotation));
           this._resetTransformCache();
           this.update();
-          this.getLayer().batchDraw();
       }
       /**
        * force update of Konva.Transformer.
@@ -16390,7 +16385,7 @@
               x: 0,
               y: 0,
           });
-          (_a = this.getLayer()) === null || _a === void 0 ? void 0 : _a.batchDraw();
+          (_a = this.getLayer()) === null || _a === void 0 ? void 0 : _a.refresh();
       }
       /**
        * determine if transformer is in active transform

@@ -31,6 +31,7 @@ export declare class Stage extends Container<Layer> {
     _touchDblTimeout: any;
     _pointerDblTimeout: any;
     constructor(config: StageConfig);
+    refresh(render?: boolean): void;
     _validateAdd(child: any): void;
     _checkVisibility(): void;
     setContainer(container: any): this;

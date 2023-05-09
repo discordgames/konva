@@ -488,12 +488,6 @@ export class Layer extends Container<Group | Shape> {
     return super.destroy();
   }
 
-  refresh() {
-    // ensure a re-render + hit refresh
-    this._drawTimer = 0;
-    this._refreshHit = true;
-  }
-
   hitGraphEnabled: GetSet<boolean, this>;
 
   clearBeforeDraw: GetSet<boolean, this>;

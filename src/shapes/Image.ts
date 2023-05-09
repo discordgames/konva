@@ -60,7 +60,7 @@ export class Image extends Shape<ImageConfig> {
     }
     if (image && image['addEventListener']) {
       image['addEventListener']('load', () => {
-        this._requestDraw();
+        this.refresh();
       });
     }
   }

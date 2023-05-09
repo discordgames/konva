@@ -77,6 +77,7 @@ export declare abstract class Node<Config extends NodeConfig = NodeConfig> {
     _drawAccumulation: number;
     _refreshHit: boolean;
     constructor(config?: Config);
+    refresh(render?: boolean): void;
     hasChildren(): boolean;
     _clearCache(attr?: string): void;
     _getCache(attr: string, privateGetter: Function): any;

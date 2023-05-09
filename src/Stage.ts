@@ -191,6 +191,11 @@ export class Stage extends Container<Layer> {
     this._checkVisibility();
   }
 
+  refresh(render:boolean = true) {
+    this.getLayers()?.forEach((layer) => layer.refresh(false));
+    super.refresh(render);
+  }
+
   _validateAdd(child) {
     const isLayer = child.getType() === 'Layer';
     const isFastLayer = child.getType() === 'FastLayer';
