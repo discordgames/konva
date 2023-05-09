@@ -35,12 +35,13 @@ export class Ellipse extends Shape<EllipseConfig> {
       ry = this.radiusY();
 
     context.beginPath();
-    context.save();
     if (rx !== ry) {
       context.scale(1, ry / rx);
+      context.arc(0, 0, rx, 0, Math.PI * 2, false);
+      context.scale(1, rx / ry);
+    } else {
+      context.arc(0, 0, rx, 0, Math.PI * 2, false);
     }
-    context.arc(0, 0, rx, 0, Math.PI * 2, false);
-    context.restore();
     context.closePath();
     context.fillStrokeShape(this);
   }

@@ -2870,7 +2870,6 @@
           };
       }
       _drawCachedSceneCanvas(context) {
-          context.save();
           context._applyOpacity(this);
           context._applyGlobalCompositeOperation(this);
           const canvasCache = this._getCanvasCache();
@@ -2878,14 +2877,13 @@
           var cacheCanvas = this._getCachedSceneCanvas();
           var ratio = cacheCanvas.pixelRatio;
           context.drawImage(cacheCanvas._canvas, 0, 0, cacheCanvas.width / ratio, cacheCanvas.height / ratio);
-          context.restore();
+          context.translate(-canvasCache.x, -canvasCache.y);
       }
       _drawCachedHitCanvas(context) {
           var canvasCache = this._getCanvasCache(), hitCanvas = canvasCache.hit;
-          context.save();
           context.translate(canvasCache.x, canvasCache.y);
           context.drawImage(hitCanvas._canvas, 0, 0, hitCanvas.width / hitCanvas.pixelRatio, hitCanvas.height / hitCanvas.pixelRatio);
-          context.restore();
+          context.translate(-canvasCache.x, -canvasCache.y);
       }
       _getCachedSceneCanvas() {
           var filters = this.filters(), cachedCanvas = this._getCanvasCache(), sceneCanvas = cachedCanvas.scene, filterCanvas = cachedCanvas.filter, filterContext = filterCanvas.getContext(), len, imageData, n, filter;
@@ -5625,11 +5623,11 @@
               return this;
           }
           if (cachedSceneCanvas) {
-              context.save();
+              const t = context._context.getTransform();
               var m = this.getAbsoluteTransform(top).getMatrix();
               context.transform(m[0], m[1], m[2], m[3], m[4], m[5]);
               this._drawCachedSceneCanvas(context);
-              context.restore();
+              context._context.setTransform(t);
           }
           else {
               this._drawChildren('drawScene', canvas, top);
@@ -5642,11 +5640,11 @@
           }
           var layer = this.getLayer(), canvas = can || (layer && layer.hitCanvas), context = canvas && canvas.getContext(), cachedCanvas = this._getCanvasCache(), cachedHitCanvas = cachedCanvas && cachedCanvas.hit;
           if (cachedHitCanvas) {
-              context.save();
+              const t = context._context.getTransform();
               var m = this.getAbsoluteTransform(top).getMatrix();
               context.transform(m[0], m[1], m[2], m[3], m[4], m[5]);
               this._drawCachedHitCanvas(context);
-              context.restore();
+              context._context.setTransform(t);
           }
           else {
               this._drawChildren('drawHit', canvas, top);
@@ -5657,7 +5655,8 @@
           var _a;
           var context = canvas && canvas.getContext(), clipWidth = this.clipWidth(), clipHeight = this.clipHeight(), clipFunc = this.clipFunc(), hasClip = (clipWidth && clipHeight) || clipFunc;
           const selfCache = top === this;
-          if (hasClip) {
+          // do not apply clip when generating hit buffer
+          if (hasClip && (drawMethod !== 'drawHit' || this.clipEnableForHit())) {
               context.save();
               var transform = this.getAbsoluteTransform(top);
               var m = transform.getMatrix();
@@ -5765,7 +5764,7 @@
           return selfRect;
       }
   }
-  // add getters setters
+  Factory.addGetterSetter(Container, 'clipEnableForHit', true, getBooleanValidator());
   Factory.addComponentsGetterSetter(Container, 'clip', [
       'x',
       'y',
@@ -7176,11 +7175,11 @@
           }
           // if node is cached we just need to draw from cache
           if (cachedCanvas) {
-              context.save();
+              const t = context._context.getTransform();
               var m = this.getAbsoluteTransform(top).getMatrix();
               context.transform(m[0], m[1], m[2], m[3], m[4], m[5]);
               this._drawCachedSceneCanvas(context);
-              context.restore();
+              context._context.setTransform(t);
               return this;
           }
           if (!drawFunc) {
@@ -7233,11 +7232,11 @@
               Util.warn('Looks like your canvas has a destroyed shape in it. Do not reuse shape after you destroyed it. If you want to reuse shape you should call remove() instead of destroy()');
           }
           if (cachedHitCanvas) {
-              context.save();
+              const t = context._context.getTransform();
               var m = this.getAbsoluteTransform(top).getMatrix();
               context.transform(m[0], m[1], m[2], m[3], m[4], m[5]);
               this._drawCachedHitCanvas(context);
-              context.restore();
+              context._context.setTransform(t);
               return this;
           }
           if (!drawFunc) {
@@ -12400,12 +12399,14 @@
       _sceneFunc(context) {
           var rx = this.radiusX(), ry = this.radiusY();
           context.beginPath();
-          context.save();
           if (rx !== ry) {
               context.scale(1, ry / rx);
+              context.arc(0, 0, rx, 0, Math.PI * 2, false);
+              context.scale(1, rx / ry);
           }
-          context.arc(0, 0, rx, 0, Math.PI * 2, false);
-          context.restore();
+          else {
+              context.arc(0, 0, rx, 0, Math.PI * 2, false);
+          }
           context.closePath();
           context.fillStrokeShape(this);
       }

@@ -1,6 +1,6 @@
 import { Factory } from './Factory';
 import { Node, NodeConfig } from './Node';
-import { getNumberValidator } from './Validators';
+import { getBooleanValidator, getNumberValidator } from './Validators';
 
 import { GetSet, IRect } from './types';
 import { Shape } from './Shape';
@@ -14,6 +14,7 @@ export interface ContainerConfig extends NodeConfig {
   clipY?: number;
   clipWidth?: number;
   clipHeight?: number;
+  clipEnableForHit?: boolean;
 }
 
 /**
@@ -349,11 +350,11 @@ export abstract class Container<
     }
 
     if (cachedSceneCanvas) {
-      context.save();
+      const t = context._context.getTransform();
       var m = this.getAbsoluteTransform(top).getMatrix();
       context.transform(m[0], m[1], m[2], m[3], m[4], m[5]);
       this._drawCachedSceneCanvas(context);
-      context.restore();
+      context._context.setTransform(t);
     } else {
       this._drawChildren('drawScene', canvas, top);
     }
@@ -371,11 +372,11 @@ export abstract class Container<
       cachedHitCanvas = cachedCanvas && cachedCanvas.hit;
 
     if (cachedHitCanvas) {
-      context.save();
+      const t = context._context.getTransform();
       var m = this.getAbsoluteTransform(top).getMatrix();
       context.transform(m[0], m[1], m[2], m[3], m[4], m[5]);
       this._drawCachedHitCanvas(context);
-      context.restore();
+      context._context.setTransform(t);
     } else {
       this._drawChildren('drawHit', canvas, top);
     }
@@ -390,7 +391,8 @@ export abstract class Container<
 
     const selfCache = top === this;
 
-    if (hasClip) {
+    // do not apply clip when generating hit buffer
+    if (hasClip && (drawMethod !== 'drawHit' || this.clipEnableForHit())) {
       context.save();
       var transform = this.getAbsoluteTransform(top);
       var m = transform.getMatrix();
@@ -511,6 +513,7 @@ export abstract class Container<
     return selfRect;
   }
 
+  clipEnableForHit: GetSet<boolean, this>;
   clip: GetSet<IRect, this>;
   clipX: GetSet<number, this>;
   clipY: GetSet<number, this>;
@@ -523,8 +526,8 @@ export abstract class Container<
     this
   >;
 }
+Factory.addGetterSetter(Container, 'clipEnableForHit', true, getBooleanValidator());
 
-// add getters setters
 Factory.addComponentsGetterSetter(Container, 'clip', [
   'x',
   'y',

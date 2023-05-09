@@ -589,12 +589,11 @@ export class Shape<
     }
     // if node is cached we just need to draw from cache
     if (cachedCanvas) {
-      context.save();
-
+      const t = context._context.getTransform();
       var m = this.getAbsoluteTransform(top).getMatrix();
       context.transform(m[0], m[1], m[2], m[3], m[4], m[5]);
       this._drawCachedSceneCanvas(context);
-      context.restore();
+      context._context.setTransform(t);
       return this;
     }
 
@@ -670,13 +669,11 @@ export class Shape<
     }
 
     if (cachedHitCanvas) {
-      context.save();
-
+      const t = context._context.getTransform();
       var m = this.getAbsoluteTransform(top).getMatrix();
       context.transform(m[0], m[1], m[2], m[3], m[4], m[5]);
-
       this._drawCachedHitCanvas(context);
-      context.restore();
+      context._context.setTransform(t);
       return this;
     }
     if (!drawFunc) {

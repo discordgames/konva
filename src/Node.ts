@@ -531,7 +531,6 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
     };
   }
   _drawCachedSceneCanvas(context: Context) {
-    context.save();
     context._applyOpacity(this);
     context._applyGlobalCompositeOperation(this);
 
@@ -548,12 +547,11 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
       cacheCanvas.width / ratio,
       cacheCanvas.height / ratio
     );
-    context.restore();
+    context.translate(-canvasCache.x, -canvasCache.y);
   }
   _drawCachedHitCanvas(context: Context) {
     var canvasCache = this._getCanvasCache(),
       hitCanvas = canvasCache.hit;
-    context.save();
     context.translate(canvasCache.x, canvasCache.y);
     context.drawImage(
       hitCanvas._canvas,
@@ -562,7 +560,7 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
       hitCanvas.width / hitCanvas.pixelRatio,
       hitCanvas.height / hitCanvas.pixelRatio
     );
-    context.restore();
+    context.translate(-canvasCache.x, -canvasCache.y);
   }
   _getCachedSceneCanvas() {
     var filters = this.filters(),
@@ -1925,6 +1923,7 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
     if (config.imageSmoothingEnabled === false) {
       context._context.imageSmoothingEnabled = false;
     }
+    
     context.save();
 
     if (x || y) {
