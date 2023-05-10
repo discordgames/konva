@@ -125,7 +125,7 @@ export declare abstract class Node<Config extends NodeConfig = NodeConfig> {
     addEventListener(type: string, handler: (e: Event) => void): this;
     removeEventListener(type: string): this;
     _delegate(event: string, selector: string, handler: (e: Event) => void): void;
-    remove(): this;
+    remove(persistDrag?: boolean): this;
     _clearCaches(): void;
     _remove(): void;
     destroy(): this;

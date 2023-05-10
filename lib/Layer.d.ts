@@ -44,7 +44,7 @@ export declare class Layer extends Container<Group | Shape> {
     setHeight(): void;
     batchDraw(): this;
     getIntersection(pos: Vector2d): Shape<import("./Shape.js").ShapeConfig>;
-    _getIntersection(pos: Vector2d): {
+    _getIntersection(pos: Vector2d, boxFilter?: boolean): {
         shape?: Shape;
         antialiased?: boolean;
     };

@@ -832,17 +832,20 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
    * remove a node from parent, but don't destroy. You can reuse the node later.
    * @method
    * @name Konva.Node#remove
+   * @param {boolean} persistDrag  // allows an object to remain dragging across removal from parent
    * @returns {Konva.Node}
    * @example
    * node.remove();
    */
-  remove() {
-    if (this.isDragging()) {
-      this.stopDrag();
+  remove(persistDrag: boolean = false) {
+    if (!persistDrag) {
+      if (this.isDragging()) {
+        this.stopDrag();
+      }
+      // we can have drag element but that is not dragged yet
+      // so just clear it
+      DD._dragElements.delete(this._id);
     }
-    // we can have drag element but that is not dragged yet
-    // so just clear it
-    DD._dragElements.delete(this._id);
     this._remove();
     return this;
   }

@@ -72,13 +72,24 @@ export const Konva = {
    * Should we enable hit detection, by default it is true.
    * But on some rare cases you want to teporarily disable intersections. Just set it to false.
    * @property hitTestEnabled
-   * @default false
+   * @default true
    * @name hitTestEnabled
    * @memberof Konva
    * @example
    * Konva.hitTestEnabled = true;
    */
   hitTestEnabled: true,
+  /**
+   * Execute box test for improved selection.
+   * This is much better option than the default spirl mutli sample approach
+   * @property hitTestEnableBoxTest
+   * @default true
+   * @name hitTestEnableBoxTest
+   * @memberof Konva
+   * @example
+   * Konva.hitTestEnableBoxTest = true;
+   */
+  hitTestEnableBoxTest: true,
   /**
    * Should we capture touch events and bind them to the touchstart target? That is how it works on DOM elements.
    * The case: we touchstart on div1, then touchmove out of that element into another element div2.

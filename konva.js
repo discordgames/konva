@@ -70,13 +70,24 @@
        * Should we enable hit detection, by default it is true.
        * But on some rare cases you want to teporarily disable intersections. Just set it to false.
        * @property hitTestEnabled
-       * @default false
+       * @default true
        * @name hitTestEnabled
        * @memberof Konva
        * @example
        * Konva.hitTestEnabled = true;
        */
       hitTestEnabled: true,
+      /**
+       * Execute box test for improved selection.
+       * This is much better option than the default spirl mutli sample approach
+       * @property hitTestEnableBoxTest
+       * @default true
+       * @name hitTestEnableBoxTest
+       * @memberof Konva
+       * @example
+       * Konva.hitTestEnableBoxTest = true;
+       */
+      hitTestEnableBoxTest: true,
       /**
        * Should we capture touch events and bind them to the touchstart target? That is how it works on DOM elements.
        * The case: we touchstart on div1, then touchmove out of that element into another element div2.
@@ -3106,17 +3117,20 @@
        * remove a node from parent, but don't destroy. You can reuse the node later.
        * @method
        * @name Konva.Node#remove
+       * @param {boolean} persistDrag  // allows an object to remain dragging across removal from parent
        * @returns {Konva.Node}
        * @example
        * node.remove();
        */
-      remove() {
-          if (this.isDragging()) {
-              this.stopDrag();
+      remove(persistDrag = false) {
+          if (!persistDrag) {
+              if (this.isDragging()) {
+                  this.stopDrag();
+              }
+              // we can have drag element but that is not dragged yet
+              // so just clear it
+              DD._dragElements.delete(this._id);
           }
-          // we can have drag element but that is not dragged yet
-          // so just clear it
-          DD._dragElements.delete(this._id);
           this._remove();
           return this;
       }
@@ -7075,6 +7089,10 @@
        */
       intersects(point) {
           var stage = this.getStage(), bufferHitCanvas = stage.bufferHitCanvas, p;
+          if (!bufferHitCanvas) {
+              Util.error('Deprecated - use: Konva.Stage#getIntersection');
+              return false;
+          }
           bufferHitCanvas.getContext().clear();
           this.drawHit(bufferHitCanvas, null, true);
           p = bufferHitCanvas.context.getImageData(Math.round(point.x), Math.round(point.y), 1, 1).data;
@@ -8327,7 +8345,21 @@
   });
 
   // constants
-  var HASH = '#', BEFORE_DRAW = 'beforeDraw', DRAW = 'draw'; 
+  var HASH = '#', BEFORE_DRAW = 'beforeDraw', DRAW = 'draw', 
+  /*
+   * 2 - 3 - 4
+   * |       |
+   * 1 - 0   5
+   *         |
+   * 8 - 7 - 6
+   */
+  INTERSECTION_OFFSETS = [
+      { x: 0, y: 0 },
+      { x: -1, y: -1 },
+      { x: 1, y: -1 },
+      { x: 1, y: 1 },
+      { x: -1, y: 1 }, // 8
+  ], INTERSECTION_OFFSETS_LEN = INTERSECTION_OFFSETS.length;
   /**
    * Layer constructor.  Layers are tied to their own canvas element and are used
    * to contain groups or shapes.
@@ -8619,32 +8651,76 @@
           if (!this.isListening() || !this.isVisible()) {
               return null;
           }
-          // allow only basic intersection test
-          const obj = this._getIntersection(pos);
-          return (_a = obj === null || obj === void 0 ? void 0 : obj.shape) !== null && _a !== void 0 ? _a : null;
-      }
-      _getIntersection(pos) {
-          const ratio = this.hitCanvas.pixelRatio;
-          const p = this.hitCanvas.context.getImageData(Math.round(pos.x * ratio), Math.round(pos.y * ratio), 1, 1).data;
-          const p3 = p[3];
-          // fully opaque pixel
-          if (p3 === 255) {
-              const colorKey = Util._rgbToHex(p[0], p[1], p[2]);
-              const shape = shapes[HASH + colorKey];
-              if (shape) {
-                  return {
-                      shape: shape,
-                  };
-              }
-              return {
-                  antialiased: true,
-              };
+          if (Konva$2.hitTestEnableBoxTest) {
+              // do a box filter from a single texture sample instead what is proposed
+              const obj = this._getIntersection(pos, true);
+              return (_a = obj === null || obj === void 0 ? void 0 : obj.shape) !== null && _a !== void 0 ? _a : null;
           }
-          else if (p3 > 0) {
-              // antialiased pixel
-              return {
-                  antialiased: true,
-              };
+          // in some cases antialiased area may be bigger than 1px
+          // it is possible if we will cache node, then scale it a lot
+          var spiralSearchDistance = 1;
+          var continueSearch = false;
+          while (true) {
+              for (let i = 0; i < INTERSECTION_OFFSETS_LEN; i++) {
+                  const intersectionOffset = INTERSECTION_OFFSETS[i];
+                  const obj = this._getIntersection({
+                      x: pos.x + intersectionOffset.x * spiralSearchDistance,
+                      y: pos.y + intersectionOffset.y * spiralSearchDistance,
+                  });
+                  const shape = obj.shape;
+                  if (shape) {
+                      return shape;
+                  }
+                  // we should continue search if we found antialiased pixel
+                  // that means our node somewhere very close
+                  continueSearch = !!obj.antialiased;
+                  // stop search if found empty pixel
+                  if (!obj.antialiased) {
+                      break;
+                  }
+              }
+              // if no shape, and no antialiased pixel, we should end searching
+              if (continueSearch) {
+                  spiralSearchDistance += 1;
+              }
+              else {
+                  return null;
+              }
+          }
+      }
+      _getIntersection(pos, boxFilter = false) {
+          if (!boxFilter) {
+              const ratio = this.hitCanvas.pixelRatio;
+              const p = this.hitCanvas.context.getImageData(Math.round(pos.x * ratio), Math.round(pos.y * ratio), 1, 1).data;
+              // fully opaque pixel
+              if (p[3] === 255) {
+                  const colorKey = Util._rgbToHex(p[0], p[1], p[2]);
+                  const shape = shapes[HASH + colorKey];
+                  if (shape) {
+                      return {
+                          shape: shape,
+                      };
+                  }
+              }
+          }
+          else {
+              // sample 3x3 box
+              const ratio = this.hitCanvas.pixelRatio;
+              const sampledBox = this.hitCanvas.context.getImageData(Math.round(pos.x * ratio) - 1, Math.round(pos.y * ratio) - 1, 3, 3).data;
+              // check center and corners
+              for (const sample of [4, 0, 2, 6, 8]) {
+                  const p = new Uint8ClampedArray(sampledBox.buffer, sample * 4, 4);
+                  // fully opaque pixel
+                  if (p[3] === 255) {
+                      const colorKey = Util._rgbToHex(p[0], p[1], p[2]);
+                      const shape = shapes[HASH + colorKey];
+                      if (shape) {
+                          return {
+                              shape: shape,
+                          };
+                      }
+                  }
+              }
           }
           // empty pixel
           return {};

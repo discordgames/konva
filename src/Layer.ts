@@ -9,7 +9,7 @@ import { getBooleanValidator } from './Validators';
 import { GetSet, Vector2d } from './types';
 import { Group } from './Group';
 import { Shape, shapes } from './Shape';
-import { _registerNode } from './Global';
+import { _registerNode, Konva } from './Global';
 
 export interface LayerConfig extends ContainerConfig {
   clearBeforeDraw?: boolean;
@@ -332,10 +332,11 @@ export class Layer extends Container<Group | Shape> {
       return null;
     }
 
-    // allow only basic intersection test
-
-    const obj = this._getIntersection(pos);
-    return obj?.shape ?? null;
+    if (Konva.hitTestEnableBoxTest) {
+      // do a box filter from a single texture sample instead what is proposed
+      const obj = this._getIntersection(pos, true);
+      return obj?.shape ?? null;
+    }
 
     // in some cases antialiased area may be bigger than 1px
     // it is possible if we will cache node, then scale it a lot
@@ -368,34 +369,54 @@ export class Layer extends Container<Group | Shape> {
       }
     }
   }
-  _getIntersection(pos: Vector2d): { shape?: Shape; antialiased?: boolean } {
-    const ratio = this.hitCanvas.pixelRatio;
-    const p = this.hitCanvas.context.getImageData(
-      Math.round(pos.x * ratio),
-      Math.round(pos.y * ratio),
-      1,
-      1
-    ).data;
-    const p3 = p[3];
 
-    // fully opaque pixel
-    if (p3 === 255) {
-      const colorKey = Util._rgbToHex(p[0], p[1], p[2]);
-      const shape = shapes[HASH + colorKey];
-      if (shape) {
-        return {
-          shape: shape,
-        };
+  _getIntersection(pos: Vector2d, boxFilter: boolean = false): { shape?: Shape; antialiased?: boolean } {
+    if (!boxFilter) {
+      const ratio = this.hitCanvas.pixelRatio;
+      const p = this.hitCanvas.context.getImageData(
+        Math.round(pos.x * ratio),
+        Math.round(pos.y * ratio),
+        1,
+        1
+      ).data;
+
+      // fully opaque pixel
+      if (p[3] === 255) {
+        const colorKey = Util._rgbToHex(p[0], p[1], p[2]);
+        const shape = shapes[HASH + colorKey];
+        if (shape) {
+          return {
+            shape: shape,
+          };
+        }
       }
-      return {
-        antialiased: true,
-      };
-    } else if (p3 > 0) {
-      // antialiased pixel
-      return {
-        antialiased: true,
-      };
     }
+    else {
+      // sample 3x3 box
+      const ratio = this.hitCanvas.pixelRatio;
+      const sampledBox = this.hitCanvas.context.getImageData(
+        Math.round(pos.x * ratio) - 1,
+        Math.round(pos.y * ratio) - 1,
+        3,
+        3
+      ).data;
+
+      // check center and corners
+      for (const sample of [4, 0, 2, 6, 8]) {
+        const p = new Uint8ClampedArray(sampledBox.buffer, sample * 4, 4);
+        // fully opaque pixel
+        if (p[3] === 255) {
+          const colorKey = Util._rgbToHex(p[0], p[1], p[2]);
+          const shape = shapes[HASH + colorKey];
+          if (shape) {
+            return {
+              shape: shape,
+            };
+          }
+        }
+      }
+    }
+
     // empty pixel
     return {};
   }

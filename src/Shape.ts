@@ -431,6 +431,11 @@ export class Shape<
       bufferHitCanvas = stage.bufferHitCanvas,
       p;
 
+    if (!bufferHitCanvas) {
+      Util.error('Deprecated - use: Konva.Stage#getIntersection');
+      return false;
+    }
+    
     bufferHitCanvas.getContext().clear();
     this.drawHit(bufferHitCanvas, null, true);
     p = bufferHitCanvas.context.getImageData(
