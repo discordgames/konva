@@ -1000,8 +1000,10 @@ export const Util = {
     if (!Konva.releaseCanvasOnDestroy) return;
 
     canvases.forEach(c => {
+      if (c) {
       c.width = 0;
       c.height = 0;
+      }
     })
   },
   drawRoundedRectPath(context: Context, width: number, height: number, cornerRadius: number | number[]) {

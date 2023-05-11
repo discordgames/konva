@@ -919,7 +919,7 @@ export class HitContext extends Context {
     super(canvas);
     this._context = canvas._canvas.getContext('2d', {
       willReadFrequently: true,
-      alpha: false,
+      alpha: true,
       desynchronized,
     }) as CanvasRenderingContext2D;
   }

@@ -8,7 +8,7 @@
    * Konva JavaScript Framework v9.0.1
    * http://konvajs.org/
    * Licensed under the MIT
-   * Date: Tue May 09 2023
+   * Date: Thu May 11 2023
    *
    * Original work Copyright (C) 2011 - 2013 by Eric Rowell (KineticJS)
    * Modified work Copyright (C) 2014 - present by Anton Lavrenov (Konva)
@@ -1144,8 +1144,10 @@
           if (!Konva$2.releaseCanvasOnDestroy)
               return;
           canvases.forEach(c => {
-              c.width = 0;
-              c.height = 0;
+              if (c) {
+                  c.width = 0;
+                  c.height = 0;
+              }
           });
       },
       drawRoundedRectPath(context, width, height, cornerRadius) {
@@ -2221,7 +2223,7 @@
           super(canvas);
           this._context = canvas._canvas.getContext('2d', {
               willReadFrequently: true,
-              alpha: false,
+              alpha: true,
               desynchronized,
           });
       }
@@ -2589,7 +2591,6 @@
           this._drawRate = 1000 / 60;
           this._drawTimer = 0;
           this._drawAccumulation = 0;
-          this._refreshHit = true;
           // on initial set attrs wi don't need to fire change events
           // because nobody is listening to them yet
           this.setAttrs(config);
@@ -2600,7 +2601,6 @@
       refresh(render = true) {
           this._drawTimer = 0;
           this._drawAccumulation = 0;
-          this._refreshHit = true;
           render && this._requestDraw();
       }
       hasChildren() {
@@ -2677,7 +2677,7 @@
               this._cache.delete(CANVAS);
           }
           this._clearSelfAndDescendantCache();
-          this.refresh();
+          //this.refresh();
           return this;
       }
       /**
@@ -2762,12 +2762,15 @@
               pixelRatio: pixelRatio,
               width: width,
               height: height,
-          }), cachedFilterCanvas = new SceneCanvas({
-              pixelRatio: pixelRatio,
-              width: 0,
-              height: 0,
-              willReadFrequently: true,
-          }), cachedHitCanvas = new HitCanvas({
+          }), 
+          // disable filters
+          // cachedFilterCanvas = new SceneCanvas({
+          //   pixelRatio: pixelRatio,
+          //   width: 0,
+          //   height: 0,
+          //   willReadFrequently: true,
+          // }),
+          cachedHitCanvas = new HitCanvas({
               pixelRatio: hitCanvasPixelRatio,
               width: width,
               height: height,
@@ -2778,10 +2781,8 @@
           this._filterUpToDate = false;
           if (conf.imageSmoothingEnabled === false) {
               cachedSceneCanvas.getContext()._context.imageSmoothingEnabled = false;
-              cachedFilterCanvas.getContext()._context.imageSmoothingEnabled = false;
+              //cachedFilterCanvas.getContext()._context.imageSmoothingEnabled = false;
           }
-          sceneContext.save();
-          hitContext.save();
           sceneContext.translate(-x, -y);
           hitContext.translate(-x, -y);
           // extra flag to skip on getAbsolute opacity calc
@@ -2791,8 +2792,8 @@
           this.drawScene(cachedSceneCanvas, this);
           this.drawHit(cachedHitCanvas, this);
           this._isUnderCache = false;
-          sceneContext.restore();
-          hitContext.restore();
+          hitContext.translate(x, y);
+          sceneContext.translate(x, y);
           // this will draw a red border around the cached box for
           // debugging purposes
           if (drawBorder) {
@@ -2807,12 +2808,12 @@
           }
           this._cache.set(CANVAS, {
               scene: cachedSceneCanvas,
-              filter: cachedFilterCanvas,
+              filter: undefined,
               hit: cachedHitCanvas,
               x: x,
               y: y,
           });
-          this.refresh();
+          //this.refresh();
           return this;
       }
       /**
@@ -2909,8 +2910,9 @@
           context.translate(-canvasCache.x, -canvasCache.y);
       }
       _getCachedSceneCanvas() {
-          var filters = this.filters(), cachedCanvas = this._getCanvasCache(), sceneCanvas = cachedCanvas.scene, filterCanvas = cachedCanvas.filter, filterContext = filterCanvas.getContext(), len, imageData, n, filter;
+          var filters = this.filters(), cachedCanvas = this._getCanvasCache(), sceneCanvas = cachedCanvas.scene;
           if (filters) {
+              var filterCanvas = cachedCanvas.filter, filterContext = filterCanvas.getContext(), len, imageData, n, filter;
               if (!this._filterUpToDate) {
                   var ratio = sceneCanvas.pixelRatio;
                   filterCanvas.setSize(sceneCanvas.width / sceneCanvas.pixelRatio, sceneCanvas.height / sceneCanvas.pixelRatio);
@@ -3677,6 +3679,7 @@
           return false;
       }
       setZIndex(zIndex) {
+          const index = this.index;
           if (!this.parent) {
               Util.warn('Node has no parent. zIndex parameter is ignored.');
               return this;
@@ -3688,10 +3691,11 @@
                   (this.parent.children.length - 1) +
                   '.');
           }
-          var index = this.index;
-          this.parent.children.splice(index, 1);
-          this.parent.children.splice(zIndex, 0, this);
-          this.parent._setChildrenIndices();
+          if (zIndex !== index) {
+              this.parent.children.splice(index, 1);
+              this.parent.children.splice(zIndex, 0, this);
+              this.parent._setChildrenIndices();
+          }
           return this;
       }
       /**
@@ -4536,16 +4540,15 @@
        */
       draw() {
           const time = Date.now();
-          // draw scene
           const elapsedDraw = time - this._drawTimer;
           this._drawAccumulation += elapsedDraw;
           if (this._drawAccumulation >= this._drawRate) {
               this._drawAccumulation = this._drawRate ? this._drawAccumulation % this._drawRate : 0;
+              // draw scene
               this.drawScene();
-              // draw hit
-              if (this._refreshHit === true && Konva$2.hitTestEnabled) {
+              // draw hit test buffer
+              if (Konva$2.hitTestEnabled) {
                   this.drawHit();
-                  this._refreshHit = false;
               }
           }
           this._drawTimer = time;

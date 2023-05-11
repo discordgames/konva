@@ -163,12 +163,9 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
   _shouldFireChangeEvents = false;
 
   // refresh rates
-
   _drawRate = 1000 / 60;
   _drawTimer = 0;
   _drawAccumulation = 0;
-
-  _refreshHit = true;
 
   constructor(config?: Config) {
     // on initial set attrs wi don't need to fire change events
@@ -184,8 +181,6 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
   refresh(render: boolean = true) {
     this._drawTimer = 0;
     this._drawAccumulation = 0;
-    this._refreshHit = true;
-
     render && this._requestDraw();
   }
 
@@ -270,7 +265,7 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
     }
 
     this._clearSelfAndDescendantCache();
-    this.refresh();
+    //this.refresh();
     return this;
   }
   /**
@@ -384,12 +379,13 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
         width: width,
         height: height,
       }),
-      cachedFilterCanvas = new SceneCanvas({
-        pixelRatio: pixelRatio,
-        width: 0,
-        height: 0,
-        willReadFrequently: true,
-      }),
+      // disable filters
+      // cachedFilterCanvas = new SceneCanvas({
+      //   pixelRatio: pixelRatio,
+      //   width: 0,
+      //   height: 0,
+      //   willReadFrequently: true,
+      // }),
       cachedHitCanvas = new HitCanvas({
         pixelRatio: hitCanvasPixelRatio,
         width: width,
@@ -406,12 +402,9 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
 
     if (conf.imageSmoothingEnabled === false) {
       cachedSceneCanvas.getContext()._context.imageSmoothingEnabled = false;
-      cachedFilterCanvas.getContext()._context.imageSmoothingEnabled = false;
+      //cachedFilterCanvas.getContext()._context.imageSmoothingEnabled = false;
     }
-
-    sceneContext.save();
-    hitContext.save();
-
+    
     sceneContext.translate(-x, -y);
     hitContext.translate(-x, -y);
 
@@ -423,9 +416,10 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
     this.drawScene(cachedSceneCanvas, this);
     this.drawHit(cachedHitCanvas, this);
     this._isUnderCache = false;
-
-    sceneContext.restore();
-    hitContext.restore();
+    
+    hitContext.translate(x, y);
+    sceneContext.translate(x, y);
+    
 
     // this will draw a red border around the cached box for
     // debugging purposes
@@ -442,13 +436,13 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
 
     this._cache.set(CANVAS, {
       scene: cachedSceneCanvas,
-      filter: cachedFilterCanvas,
+      filter: undefined, //cachedFilterCanvas,
       hit: cachedHitCanvas,
       x: x,
       y: y,
     });
 
-    this.refresh();
+    //this.refresh();
 
     return this;
   }
@@ -573,15 +567,16 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
   _getCachedSceneCanvas() {
     var filters = this.filters(),
       cachedCanvas = this._getCanvasCache(),
-      sceneCanvas = cachedCanvas.scene,
-      filterCanvas = cachedCanvas.filter,
+      sceneCanvas = cachedCanvas.scene;
+
+    if (filters) {
+      var filterCanvas = cachedCanvas.filter,
       filterContext = filterCanvas.getContext(),
       len,
       imageData,
       n,
       filter;
 
-    if (filters) {
       if (!this._filterUpToDate) {
         var ratio = sceneCanvas.pixelRatio;
         filterCanvas.setSize(
@@ -1437,6 +1432,8 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
     return false;
   }
   setZIndex(zIndex) {
+    const index = this.index;
+    
     if (!this.parent) {
       Util.warn('Node has no parent. zIndex parameter is ignored.');
       return this;
@@ -1450,10 +1447,11 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
           '.'
       );
     }
-    var index = this.index;
-    this.parent.children.splice(index, 1);
-    this.parent.children.splice(zIndex, 0, this);
-    this.parent._setChildrenIndices();
+    if (zIndex !== index) {
+      this.parent.children.splice(index, 1);
+      this.parent.children.splice(zIndex, 0, this);
+      this.parent._setChildrenIndices();
+    }
     return this;
   }
   /**
@@ -2388,17 +2386,16 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
   draw() {
     const time = Date.now();
     
-    // draw scene
     const elapsedDraw = time - this._drawTimer;
     this._drawAccumulation += elapsedDraw;
     if (this._drawAccumulation >= this._drawRate) {
       this._drawAccumulation = this._drawRate ? this._drawAccumulation % this._drawRate : 0;
+      // draw scene
       this.drawScene();
 
-      // draw hit
-      if (this._refreshHit === true && Konva.hitTestEnabled) {
+      // draw hit test buffer
+      if (Konva.hitTestEnabled) {
         this.drawHit();
-        this._refreshHit = false;
       }
     }
     this._drawTimer = time;
