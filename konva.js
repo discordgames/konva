@@ -8,7 +8,7 @@
    * Konva JavaScript Framework v9.0.1
    * http://konvajs.org/
    * Licensed under the MIT
-   * Date: Thu May 11 2023
+   * Date: Fri May 12 2023
    *
    * Original work Copyright (C) 2011 - 2013 by Eric Rowell (KineticJS)
    * Modified work Copyright (C) 2014 - present by Anton Lavrenov (Konva)
@@ -2591,6 +2591,7 @@
           this._drawRate = 1000 / 60;
           this._drawTimer = 0;
           this._drawAccumulation = 0;
+          this._refreshHit = true;
           // on initial set attrs wi don't need to fire change events
           // because nobody is listening to them yet
           this.setAttrs(config);
@@ -2601,6 +2602,7 @@
       refresh(render = true) {
           this._drawTimer = 0;
           this._drawAccumulation = 0;
+          this._refreshHit = true;
           render && this._requestDraw();
       }
       hasChildren() {
@@ -2725,6 +2727,7 @@
        * });
        */
       cache(config) {
+          var _a;
           var conf = config || {};
           var rect = {};
           // don't call getClientRect if we have all attributes
@@ -2782,6 +2785,10 @@
           if (conf.imageSmoothingEnabled === false) {
               cachedSceneCanvas.getContext()._context.imageSmoothingEnabled = false;
               //cachedFilterCanvas.getContext()._context.imageSmoothingEnabled = false;
+          }
+          else {
+              cachedSceneCanvas.getContext()._context.imageSmoothingEnabled = true;
+              cachedSceneCanvas.getContext()._context.imageSmoothingQuality = (_a = conf.imageSmoothingQuality) !== null && _a !== void 0 ? _a : 'low';
           }
           sceneContext.translate(-x, -y);
           hitContext.translate(-x, -y);
@@ -4119,6 +4126,7 @@
           return node;
       }
       _toKonvaCanvas(config) {
+          var _a;
           config = config || {};
           var box = this.getClientRect();
           var stage = this.getStage(), x = config.x !== undefined ? config.x : Math.floor(box.x), y = config.y !== undefined ? config.y : Math.floor(box.y), pixelRatio = config.pixelRatio || 1, canvas = new SceneCanvas({
@@ -4130,6 +4138,10 @@
           }), context = canvas.getContext();
           if (config.imageSmoothingEnabled === false) {
               context._context.imageSmoothingEnabled = false;
+          }
+          else {
+              context._context.imageSmoothingEnabled = true;
+              context._context.imageSmoothingQuality = (_a = config.imageSmoothingQuality) !== null && _a !== void 0 ? _a : 'low';
           }
           context.save();
           if (x || y) {
@@ -4547,8 +4559,9 @@
               // draw scene
               this.drawScene();
               // draw hit test buffer
-              if (Konva$2.hitTestEnabled) {
+              if (Konva$2.hitTestEnabled && this._refreshHit) {
                   this.drawHit();
+                  this._refreshHit = false;
               }
           }
           this._drawTimer = time;

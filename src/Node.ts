@@ -167,6 +167,8 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
   _drawTimer = 0;
   _drawAccumulation = 0;
 
+  _refreshHit = true;
+
   constructor(config?: Config) {
     // on initial set attrs wi don't need to fire change events
     // because nobody is listening to them yet
@@ -181,6 +183,8 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
   refresh(render: boolean = true) {
     this._drawTimer = 0;
     this._drawAccumulation = 0;
+    this._refreshHit = true;
+    
     render && this._requestDraw();
   }
 
@@ -320,8 +324,9 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
     drawBorder?: boolean;
     offset?: number;
     pixelRatio?: number;
-    imageSmoothingEnabled?: boolean;
     hitCanvasPixelRatio?: number;
+    imageSmoothingEnabled?: boolean;
+    imageSmoothingQuality?: ImageSmoothingQuality;
   }) {
     var conf = config || {};
     var rect = {} as IRect;
@@ -403,6 +408,9 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
     if (conf.imageSmoothingEnabled === false) {
       cachedSceneCanvas.getContext()._context.imageSmoothingEnabled = false;
       //cachedFilterCanvas.getContext()._context.imageSmoothingEnabled = false;
+    } else {
+      cachedSceneCanvas.getContext()._context.imageSmoothingEnabled = true;
+      cachedSceneCanvas.getContext()._context.imageSmoothingQuality = conf.imageSmoothingQuality ?? 'low';
     }
     
     sceneContext.translate(-x, -y);
@@ -1931,6 +1939,9 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
 
     if (config.imageSmoothingEnabled === false) {
       context._context.imageSmoothingEnabled = false;
+    } else {
+      context._context.imageSmoothingEnabled = true;
+      context._context.imageSmoothingQuality = config.imageSmoothingQuality ?? 'low';
     }
     
     context.save();
@@ -2394,8 +2405,9 @@ export abstract class Node<Config extends NodeConfig = NodeConfig> {
       this.drawScene();
 
       // draw hit test buffer
-      if (Konva.hitTestEnabled) {
+      if (Konva.hitTestEnabled && this._refreshHit) {
         this.drawHit();
+        this._refreshHit = false;
       }
     }
     this._drawTimer = time;

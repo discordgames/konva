@@ -75,6 +75,7 @@ export declare abstract class Node<Config extends NodeConfig = NodeConfig> {
     _drawRate: number;
     _drawTimer: number;
     _drawAccumulation: number;
+    _refreshHit: boolean;
     constructor(config?: Config);
     refresh(render?: boolean): void;
     hasChildren(): boolean;
@@ -92,8 +93,9 @@ export declare abstract class Node<Config extends NodeConfig = NodeConfig> {
         drawBorder?: boolean;
         offset?: number;
         pixelRatio?: number;
-        imageSmoothingEnabled?: boolean;
         hitCanvasPixelRatio?: number;
+        imageSmoothingEnabled?: boolean;
+        imageSmoothingQuality?: ImageSmoothingQuality;
     }): this;
     isCached(): boolean;
     abstract drawScene(canvas?: Canvas, top?: Node): void;
